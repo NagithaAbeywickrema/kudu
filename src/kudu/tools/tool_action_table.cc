@@ -488,6 +488,18 @@ Status ScanTable(const RunnerContext &context) {
   return scanner.StartScan();
 }
 
+    Status ExportTable(const RunnerContext &context) {
+        client::sp::shared_ptr<KuduClient> client;
+        RETURN_NOT_OK(CreateKuduClient(context, &client));
+
+        const string& table_name = FindOrDie(context.required_args, kTableNameArg);
+
+        FLAGS_show_values = true;
+        TableScanner scanner(client, table_name);
+        scanner.SetOutput(&cout);
+        return scanner.StartExport();
+    }
+
 Status CopyTable(const RunnerContext& context) {
   client::sp::shared_ptr<KuduClient> src_client;
   RETURN_NOT_OK(CreateKuduClient(context, &src_client));
@@ -1298,6 +1310,20 @@ unique_ptr<Mode> BuildTableMode() {
       .AddOptionalParameter("tablets")
       .Build();
 
+  //TODO: add optional file path parameter
+    unique_ptr<Action> export_table =
+            ClusterActionBuilder("export", &ExportTable)
+                    .Description("Export rows from a table in CSV format")
+                    .ExtraDescription("Export rows from an existing table in CSV format. See the help "
+                                      "for the --predicates flag on how predicates can be specified.")
+                    .AddRequiredParameter({ kTableNameArg, "Name of the table to export"})
+                    .AddOptionalParameter("columns")
+                    .AddOptionalParameter("fill_cache")
+                    .AddOptionalParameter("num_threads")
+                    .AddOptionalParameter("predicates")
+                    .AddOptionalParameter("tablets")
+                    .Build();
+
   unique_ptr<Action> copy_table =
       ClusterActionBuilder("copy", &CopyTable)
       .Description("Copy table data to another table")
@@ -1469,6 +1495,7 @@ unique_ptr<Mode> BuildTableMode() {
       .AddAction(std::move(rename_column))
       .AddAction(std::move(rename_table))
       .AddAction(std::move(scan_table))
+          .AddAction(std::move(export_table))
       .AddAction(std::move(set_extra_config))
       .AddAction(std::move(statistics))
       .Build();

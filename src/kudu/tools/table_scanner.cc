@@ -508,6 +508,20 @@ void TableScanner::ScanTask(const vector<KuduScanToken *>& tokens, Status* threa
   });
 }
 
+    void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thread_status) {
+        *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch) {
+            if (out_ && FLAGS_show_values) {
+                MutexLock l(output_lock_);
+                for (const auto& row : batch) {
+                    //TODO: convert to CSV
+                    //*out_ << row.ToString() << "\n";
+                }
+                *out_ << "This is export!" << "\n";
+                out_->flush();
+            }
+        });
+    }
+
 void TableScanner::CopyTask(const vector<KuduScanToken*>& tokens, Status* thread_status) {
   client::sp::shared_ptr<KuduTable> dst_table;
   CHECK_OK(dst_client_.get()->OpenTable(*dst_table_name_, &dst_table));
@@ -560,7 +574,7 @@ Status TableScanner::StartWork(WorkType type) {
   RETURN_NOT_OK(builder.SetTimeoutMillis(30000));
 
   // Set projection if needed.
-  if (type == WorkType::kScan) {
+  if (type == WorkType::kScan || type == WorkType::kExport) {
     bool project_all = FLAGS_columns == "*" ||
                        (FLAGS_show_values && FLAGS_columns.empty());
     if (!project_all) {
@@ -603,7 +617,11 @@ Status TableScanner::StartWork(WorkType type) {
     if (type == WorkType::kScan) {
       RETURN_NOT_OK(thread_pool_->Submit([this, t_tokens, t_status]()
                                          { this->ScanTask(*t_tokens, t_status); }));
-    } else {
+    } else if (type == WorkType::kExport) {
+          RETURN_NOT_OK(thread_pool_->Submit([this, t_tokens, t_status]()
+                                             { this->ExportTask(*t_tokens, t_status); }));
+      }
+    else {
       CHECK(type == WorkType::kCopy);
       RETURN_NOT_OK(thread_pool_->Submit([this, t_tokens, t_status]()
                                          { this->CopyTask(*t_tokens, t_status); }));
@@ -633,6 +651,10 @@ Status TableScanner::StartWork(WorkType type) {
 Status TableScanner::StartScan() {
   return StartWork(WorkType::kScan);
 }
+
+    Status TableScanner::StartExport() {
+        return StartWork(WorkType::kExport);
+    }
 
 Status TableScanner::StartCopy() {
   CHECK(dst_client_);
