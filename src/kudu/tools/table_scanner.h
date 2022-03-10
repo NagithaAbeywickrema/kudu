@@ -67,7 +67,7 @@ class TableScanner {
   void SetReadMode(kudu::client::KuduScanner::ReadMode mode);
 
   Status StartScan();
-    Status StartExport();
+  Status StartExport();
   Status StartCopy();
 
   uint64_t TotalScannedCount() const {
@@ -85,7 +85,7 @@ class TableScanner {
   Status ScanData(const std::vector<kudu::client::KuduScanToken*>& tokens,
                   const std::function<void(const kudu::client::KuduScanBatch& batch)>& cb);
   void ScanTask(const std::vector<kudu::client::KuduScanToken*>& tokens, Status* thread_status);
-    void ExportTask(const std::vector<kudu::client::KuduScanToken*>& tokens, Status* thread_status);
+  void ExportTask(const std::vector<kudu::client::KuduScanToken*>& tokens, Status* thread_status);
   void CopyTask(const std::vector<kudu::client::KuduScanToken*>& tokens, Status* thread_status);
 
   Status AddRow(const client::sp::shared_ptr<kudu::client::KuduTable>& table,

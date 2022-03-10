@@ -488,17 +488,17 @@ Status ScanTable(const RunnerContext &context) {
   return scanner.StartScan();
 }
 
-    Status ExportTable(const RunnerContext &context) {
-        client::sp::shared_ptr<KuduClient> client;
-        RETURN_NOT_OK(CreateKuduClient(context, &client));
+Status ExportTable(const RunnerContext &context) {
+    client::sp::shared_ptr <KuduClient> client;
+    RETURN_NOT_OK(CreateKuduClient(context, &client));
 
-        const string& table_name = FindOrDie(context.required_args, kTableNameArg);
+    const string &table_name = FindOrDie(context.required_args, kTableNameArg);
 
-        FLAGS_show_values = true;
-        TableScanner scanner(client, table_name);
-        scanner.SetOutput(&cout);
-        return scanner.StartExport();
-    }
+    FLAGS_show_values = true;
+    TableScanner scanner(client, table_name);
+    scanner.SetOutput(&cout);
+    return scanner.StartExport();
+}
 
 Status CopyTable(const RunnerContext& context) {
   client::sp::shared_ptr<KuduClient> src_client;

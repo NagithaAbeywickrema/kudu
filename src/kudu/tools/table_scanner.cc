@@ -46,6 +46,7 @@
 #include "kudu/gutil/map-util.h"
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/stl_util.h"
+#include "kudu/gutil/strings/join.h"
 #include "kudu/gutil/strings/split.h"
 #include "kudu/gutil/strings/substitute.h"
 #include "kudu/util/bitmap.h"
@@ -508,19 +509,19 @@ void TableScanner::ScanTask(const vector<KuduScanToken *>& tokens, Status* threa
   });
 }
 
-    void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thread_status) {
-        *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch) {
-            if (out_ && FLAGS_show_values) {
-                MutexLock l(output_lock_);
-                for (const auto& row : batch) {
-                    //TODO: convert to CSV
-                    //*out_ << row.ToString() << "\n";
-                }
-                *out_ << "This is export!" << "\n";
-                out_->flush();
+void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thread_status) {
+    *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch) {
+        if (out_ && FLAGS_show_values) {
+            MutexLock l(output_lock_);
+            for (const auto& row : batch) {
+                //TODO: convert to CSV
+                //*out_ << row.ToString() << "\n";
             }
-        });
-    }
+            *out_ << "This is export!" << "\n";
+            out_->flush();
+        }
+    });
+}
 
 void TableScanner::CopyTask(const vector<KuduScanToken*>& tokens, Status* thread_status) {
   client::sp::shared_ptr<KuduTable> dst_table;
@@ -618,9 +619,9 @@ Status TableScanner::StartWork(WorkType type) {
       RETURN_NOT_OK(thread_pool_->Submit([this, t_tokens, t_status]()
                                          { this->ScanTask(*t_tokens, t_status); }));
     } else if (type == WorkType::kExport) {
-          RETURN_NOT_OK(thread_pool_->Submit([this, t_tokens, t_status]()
-                                             { this->ExportTask(*t_tokens, t_status); }));
-      }
+      RETURN_NOT_OK(thread_pool_->Submit([this, t_tokens, t_status]()
+                                         { this->ExportTask(*t_tokens, t_status); }));
+    }
     else {
       CHECK(type == WorkType::kCopy);
       RETURN_NOT_OK(thread_pool_->Submit([this, t_tokens, t_status]()
@@ -652,9 +653,9 @@ Status TableScanner::StartScan() {
   return StartWork(WorkType::kScan);
 }
 
-    Status TableScanner::StartExport() {
-        return StartWork(WorkType::kExport);
-    }
+Status TableScanner::StartExport() {
+  return StartWork(WorkType::kExport);
+}
 
 Status TableScanner::StartCopy() {
   CHECK(dst_client_);
