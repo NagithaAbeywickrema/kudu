@@ -163,6 +163,11 @@ string ColumnSchema::ToString(ToStringMode mode) const {
                     mode == ToStringMode::WITH_ATTRIBUTES ? " " + AttrToString() : "");
 }
 
+string ColumnSchema::ToCSVString(ToStringMode mode) const {
+    return Substitute("$0",
+                      name_);
+}
+
 string ColumnSchema::TypeToString() const {
   string type_name = type_info_->name();
   ToUpperCase(type_name, &type_name);
@@ -485,6 +490,33 @@ string Schema::ToString(ToStringMode mode) const {
                 JoinStrings(pk_strs, ", "),
                 ")",
                 "\n)");
+}
+
+string Schema::ToCSVString(ToStringMode mode) const {
+    if (cols_.empty()) return "";
+
+    vector<string> pk_strs;
+    pk_strs.reserve(num_key_columns_);
+    for (int i = 0; i < num_key_columns_; i++) {
+        pk_strs.push_back(cols_[i].name());
+    }
+
+    auto col_mode = ColumnSchema::ToStringMode::WITHOUT_ATTRIBUTES;
+    if (mode & ToStringMode::WITH_COLUMN_ATTRIBUTES) {
+        col_mode = ColumnSchema::ToStringMode::WITH_ATTRIBUTES;
+    }
+    vector<string> col_strs;
+    if (has_column_ids() && (mode & ToStringMode::WITH_COLUMN_IDS)) {
+        for (int i = 0; i < cols_.size(); ++i) {
+            col_strs.push_back(Substitute("$0:$1", col_ids_[i], cols_[i].ToCSVString(col_mode)));
+        }
+    } else {
+        for (const ColumnSchema &col : cols_) {
+            col_strs.push_back(col.ToCSVString(col_mode));
+        }
+    }
+
+    return StrCat(JoinStrings(col_strs, ","), "\n");
 }
 
 template <class RowType>

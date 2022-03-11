@@ -716,6 +716,11 @@ class KUDU_EXPORT KuduSchema {
   /// @return A string describing this schema.
   std::string ToString() const;
 
+ /// Stringify this KuduSchema in CSV format.
+ ///
+ /// @return A CSV format string describing this schema.
+ std::string ToCSVString() const;
+
   /// @cond PRIVATE_API
 
   /// Convert a Schema to a KuduSchema.

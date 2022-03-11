@@ -26,6 +26,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <fstream>
 
 #include <boost/optional/optional.hpp>
 #include <gflags/gflags.h>
@@ -513,11 +514,33 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
     *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch) {
         if (out_ && FLAGS_show_values) {
             MutexLock l(output_lock_);
-            for (const auto& row : batch) {
-                //TODO: convert to CSV
-                //*out_ << row.ToString() << "\n";
+            std::fstream CSVFile;
+            CSVFile.open("/home/nia/backup/kudu_csv/CSVFile.csv", std::ios::out | std::ios::in | std::ios::app);
+            const KuduSchema* schema = batch.projection_schema();
+            CSVFile << (*schema).ToCSVString() << std::endl;
+
+            const int THRESHOLD = 300;
+            int i = 0;
+            std::string buffer;
+            buffer.reserve(THRESHOLD);
+            for (const auto& row : batch)
+            {
+                std::string row_str = row.ToCSVString();
+                if (buffer.length() + row_str.length() + 1 >= THRESHOLD)
+                {
+                    CSVFile << buffer;
+                    buffer.resize(0);
+                }
+                i++;
+                buffer.append(row_str);
+                buffer.append(1, '\n');
             }
-            *out_ << "This is export!" << "\n";
+            CSVFile << buffer;
+
+            //for (const auto& row : batch) {
+            //    CSVFile << row.ToCSVString() << std::endl;
+            //}
+            CSVFile.close();
             out_->flush();
         }
     });
@@ -619,6 +642,9 @@ Status TableScanner::StartWork(WorkType type) {
       RETURN_NOT_OK(thread_pool_->Submit([this, t_tokens, t_status]()
                                          { this->ScanTask(*t_tokens, t_status); }));
     } else if (type == WorkType::kExport) {
+      std::fstream CSVFile;
+      CSVFile.open("/home/nia/backup/kudu_csv/CSVFile.csv", std::ios::out | std::ios::trunc);
+      CSVFile.close();
       RETURN_NOT_OK(thread_pool_->Submit([this, t_tokens, t_status]()
                                          { this->ExportTask(*t_tokens, t_status); }));
     }
