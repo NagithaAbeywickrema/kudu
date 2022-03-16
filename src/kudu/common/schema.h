@@ -413,7 +413,7 @@ class ColumnSchema {
     ret->append(name_);
     ret->append("=");
     if (is_nullable_ && cell.is_null()) {
-      ret->append("NULL");
+      ret->append("");
     } else {
       type_info_->AppendDebugStringForValue(cell.ptr(), ret);
     }
@@ -424,7 +424,7 @@ class ColumnSchema {
   template<class CellType>
   void DebugCSVCellAppend(const CellType& cell, std::string* ret) const {
     if (is_nullable_ && cell.is_null()) {
-      ret->append("NULL");
+      //ret->append("");
     } else {
       type_info_->AppendDebugStringForValue(cell.ptr(), ret);
     }

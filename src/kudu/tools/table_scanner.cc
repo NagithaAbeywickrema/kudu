@@ -27,6 +27,7 @@
 #include <memory>
 #include <set>
 #include <fstream>
+#include <thread>
 
 #include <boost/optional/optional.hpp>
 #include <gflags/gflags.h>
@@ -513,19 +514,29 @@ void TableScanner::ScanTask(const vector<KuduScanToken *>& tokens, Status* threa
 void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thread_status) {
     *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch) {
         if (out_ && FLAGS_show_values) {
-            MutexLock l(output_lock_);
+            //MutexLock l(output_lock_);
             std::fstream CSVFile;
-            CSVFile.open("/home/nia/backup/kudu_csv/CSVFile.csv", std::ios::out | std::ios::in | std::ios::app);
+            std::string base_path = "/home/nia/backup/kudu_csv/CSVFile";
+            auto t_id = std::this_thread::get_id();
+            std::stringstream ss;
+            ss << t_id;
+            std::string thread_id = ss.str();
+            
+            std::string file_name = base_path + thread_id + std::string(".csv");
+            CSVFile.open(file_name, std::ios::out | std::ios::in | std::ios::app);
+            
             const KuduSchema* schema = batch.projection_schema();
-            CSVFile << (*schema).ToCSVString() << std::endl;
+            CSVFile << "thread_id: " << thread_id << std::endl;
+            CSVFile << (*schema).ToCSVString();
 
-            const int THRESHOLD = 300;
+            const int THRESHOLD = 1000;
             int i = 0;
             std::string buffer;
-            buffer.reserve(THRESHOLD);
+            buffer.reserve(THRESHOLD); 
             for (const auto& row : batch)
             {
-                std::string row_str = row.ToCSVString();
+                std::string row_str; 
+                row.ToCSVString(&row_str);
                 if (buffer.length() + row_str.length() + 1 >= THRESHOLD)
                 {
                     CSVFile << buffer;
@@ -642,9 +653,6 @@ Status TableScanner::StartWork(WorkType type) {
       RETURN_NOT_OK(thread_pool_->Submit([this, t_tokens, t_status]()
                                          { this->ScanTask(*t_tokens, t_status); }));
     } else if (type == WorkType::kExport) {
-      std::fstream CSVFile;
-      CSVFile.open("/home/nia/backup/kudu_csv/CSVFile.csv", std::ios::out | std::ios::trunc);
-      CSVFile.close();
       RETURN_NOT_OK(thread_pool_->Submit([this, t_tokens, t_status]()
                                          { this->ExportTask(*t_tokens, t_status); }));
     }
