@@ -514,45 +514,45 @@ void TableScanner::ScanTask(const vector<KuduScanToken *>& tokens, Status* threa
 void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thread_status) {
     *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch) {
         if (out_ && FLAGS_show_values) {
-            //MutexLock l(output_lock_);
-            std::fstream CSVFile;
-            std::string base_path = "/home/nia/backup/kudu_csv/CSVFile";
-            auto t_id = std::this_thread::get_id();
-            std::stringstream ss;
-            ss << t_id;
-            std::string thread_id = ss.str();
+          //MutexLock l(output_lock_);
+          std::fstream CSVFile;
+          std::string base_path = "/home/nia/backup/kudu_csv/CSVFile";
+          auto t_id = std::this_thread::get_id();
+          std::stringstream ss;
+          ss << t_id;
+          std::string thread_id = ss.str();
             
-            std::string file_name = base_path + thread_id + std::string(".csv");
-            CSVFile.open(file_name, std::ios::out | std::ios::in | std::ios::app);
+          std::string file_name = base_path + thread_id + std::string(".csv");
+          CSVFile.open(file_name, std::ios::out | std::ios::in | std::ios::app);
             
-            const KuduSchema* schema = batch.projection_schema();
-            CSVFile << "thread_id: " << thread_id << std::endl;
-            CSVFile << (*schema).ToCSVString();
+          const KuduSchema* schema = batch.projection_schema();
+          CSVFile << "thread_id: " << thread_id << std::endl;
+          CSVFile << (*schema).ToCSVString();
 
-            const int THRESHOLD = 1000;
-            int i = 0;
-            std::string buffer;
-            buffer.reserve(THRESHOLD); 
-            for (const auto& row : batch)
+          const int THRESHOLD = 500;
+          int i = 0;
+          std::string buffer;
+          buffer.reserve(THRESHOLD); 
+          for (const auto& row : batch)
+          {
+            std::string row_str; 
+            row.ToCSVString(&row_str);
+            if (buffer.length() + row_str.length() + 1 >= THRESHOLD)
             {
-                std::string row_str; 
-                row.ToCSVString(&row_str);
-                if (buffer.length() + row_str.length() + 1 >= THRESHOLD)
-                {
-                    CSVFile << buffer;
-                    buffer.resize(0);
-                }
-                i++;
-                buffer.append(row_str);
-                buffer.append(1, '\n');
+              CSVFile << buffer;
+              buffer.resize(0); //TODO: out i and clarify
             }
-            CSVFile << buffer;
+            i++;
+            buffer.append(row_str);
+            buffer.append(1, '\n');
+          }
+          CSVFile << buffer;
 
-            //for (const auto& row : batch) {
-            //    CSVFile << row.ToCSVString() << std::endl;
-            //}
-            CSVFile.close();
-            out_->flush();
+          //for (const auto& row : batch) {
+          //    CSVFile << row.ToCSVString() << std::endl;
+          //}
+          CSVFile.close();
+          out_->flush();
         }
     });
 }
