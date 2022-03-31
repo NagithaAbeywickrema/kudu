@@ -516,7 +516,7 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
         if (out_ && FLAGS_show_values) {
           //MutexLock l(output_lock_);
           std::fstream CSVFile;
-          std::string base_path = "/home/nia/backup/kudu_csv/CSVFile";
+          std::string base_path = "/home/nia/backup/kudu_csv/CSVFile"; //TODO: get path from argsv
           auto t_id = std::this_thread::get_id();
           std::stringstream ss;
           ss << t_id;
@@ -525,25 +525,27 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
           std::string file_name = base_path + thread_id + std::string(".csv");
           CSVFile.open(file_name, std::ios::out | std::ios::in | std::ios::app);
             
-          const KuduSchema* schema = batch.projection_schema();
-          CSVFile << "thread_id: " << thread_id << std::endl;
-          CSVFile << (*schema).ToCSVString();
+          //const KuduSchema* schema = batch.projection_schema();
+          //CSVFile << "thread_id: " << thread_id << std::endl;
+          //CSVFile << (*schema).ToCSVString();
 
-          const int THRESHOLD = 500;
-          int i = 0;
+          const int THRESHOLD = 10000; //TODO: get threshold from argsv
           std::string buffer;
           buffer.reserve(THRESHOLD); 
           for (const auto& row : batch)
           {
             std::string row_str; 
-            row.ToCSVString(&row_str);
+            row.ToCSVString(&row_str, ',');
             if (buffer.length() + row_str.length() + 1 >= THRESHOLD)
             {
-              CSVFile << buffer;
-              buffer.resize(0); //TODO: out i and clarify
+              if (buffer.length() == 0){
+                //TODO:LOG(WARNING)
+              } else {
+                CSVFile << buffer;
+                buffer.resize(0);
+              }
             }
-            i++;
-            buffer.append(row_str);
+            buffer.append(row_str); //TODO: if reserved value is not sufficient an error will occur?
             buffer.append(1, '\n');
           }
           CSVFile << buffer;
