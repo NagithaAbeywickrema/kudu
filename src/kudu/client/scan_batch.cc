@@ -399,7 +399,7 @@ string KuduScanBatch::RowPtr::ToString() const {
   return ret;
 }
 
-void KuduScanBatch::RowPtr::ToCSVString(std::string* ret, char delimiter) const {
+void KuduScanBatch::RowPtr::ToCSVString(std::string* ret, char delimiter) const { //TODO: add comment
     // Client-users calling ToCSVString() will likely expect it to not be redacted.
     ScopedDisableRedaction no_redaction;
     

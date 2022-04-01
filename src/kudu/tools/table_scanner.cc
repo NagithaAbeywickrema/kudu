@@ -525,9 +525,9 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
           std::string file_name = base_path + thread_id + std::string(".csv");
           CSVFile.open(file_name, std::ios::out | std::ios::in | std::ios::app);
             
-          //const KuduSchema* schema = batch.projection_schema();
-          //CSVFile << "thread_id: " << thread_id << std::endl;
-          //CSVFile << (*schema).ToCSVString();
+          // const KuduSchema* schema = batch.projection_schema();
+          // CSVFile << "thread_id: " << thread_id << std::endl;
+          // CSVFile << (*schema).ToCSVString();
 
           const int THRESHOLD = 10000; //TODO: get threshold from argsv
           std::string buffer;
