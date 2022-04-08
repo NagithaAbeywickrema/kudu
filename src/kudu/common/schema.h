@@ -426,14 +426,7 @@ class ColumnSchema {
     if (is_nullable_ && cell.is_null()) {
       //Do nothing because NULL is represented as a blank in CSV
     } else {
-      if (type_info_->type() == STRING){ //TODO: find an alternative way to remove double quotes
-        // ret->erase(0, 1);
-        // ret->erase(ret->size() - 1);
-        const Slice *s = reinterpret_cast<const Slice *>((void*)cell.ptr());
-        ret->append(strings::CHexEscape(s->ToString()));
-      } else {
-        type_info_->AppendDebugStringForValue(cell.ptr(), ret);
-      }
+      type_info_->AppendCSVStringForValue(cell.ptr(), ret, ',');
     }
   }
 

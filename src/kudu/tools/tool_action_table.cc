@@ -1312,17 +1312,19 @@ unique_ptr<Mode> BuildTableMode() {
 
   //TODO: add optional file path parameter
     unique_ptr<Action> export_table =
-            ClusterActionBuilder("export", &ExportTable)
-                    .Description("Export rows from a table in CSV format")
-                    .ExtraDescription("Export rows from an existing table in CSV format. See the help "
-                                      "for the --predicates flag on how predicates can be specified.")
-                    .AddRequiredParameter({ kTableNameArg, "Name of the table to export"})
-                    .AddOptionalParameter("columns")
-                    .AddOptionalParameter("fill_cache")
-                    .AddOptionalParameter("num_threads")
-                    .AddOptionalParameter("predicates")
-                    .AddOptionalParameter("tablets")
-                    .Build();
+      ClusterActionBuilder("export", &ExportTable)
+      .Description("Export rows from a table in CSV format")
+      .ExtraDescription("Export rows from an existing table in CSV format. See the help "
+                        "for the --predicates flag on how predicates can be specified.")
+      .AddRequiredParameter({ kTableNameArg, "Name of the table to export"})
+      .AddOptionalParameter("columns")
+      //.AddOptionalParameter("path")
+      //.AddOptionalParameter("write_buffer_size")
+      .AddOptionalParameter("fill_cache")
+      .AddOptionalParameter("num_threads")
+      .AddOptionalParameter("predicates")
+      .AddOptionalParameter("tablets")
+      .Build();
 
   unique_ptr<Action> copy_table =
       ClusterActionBuilder("copy", &CopyTable)

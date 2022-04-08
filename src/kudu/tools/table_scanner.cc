@@ -88,6 +88,8 @@ using strings::Substitute;
 DEFINE_bool(create_table, true,
             "Whether to create the destination table if it doesn't exist.");
 DECLARE_string(columns);
+//DECLARE_string(path);
+//DECLARE_int32(write_buffer_size);
 DEFINE_bool(fill_cache, true,
             "Whether to fill block cache when scanning.");
 DECLARE_int32(num_threads);
@@ -560,6 +562,7 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
 }
 
 void TableScanner::CopyTask(const vector<KuduScanToken*>& tokens, Status* thread_status) {
+  //LOG(INFO) << "path: " << FLAGS_path;
   client::sp::shared_ptr<KuduTable> dst_table;
   CHECK_OK(dst_client_.get()->OpenTable(*dst_table_name_, &dst_table));
   const KuduSchema& dst_table_schema = dst_table->schema();
@@ -657,8 +660,7 @@ Status TableScanner::StartWork(WorkType type) {
     } else if (type == WorkType::kExport) {
       RETURN_NOT_OK(thread_pool_->Submit([this, t_tokens, t_status]()
                                          { this->ExportTask(*t_tokens, t_status); }));
-    }
-    else {
+    } else {
       CHECK(type == WorkType::kCopy);
       RETURN_NOT_OK(thread_pool_->Submit([this, t_tokens, t_status]()
                                          { this->CopyTask(*t_tokens, t_status); }));

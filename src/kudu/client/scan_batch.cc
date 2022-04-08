@@ -403,14 +403,18 @@ void KuduScanBatch::RowPtr::ToCSVString(std::string* ret, char delimiter) const 
     // Client-users calling ToCSVString() will likely expect it to not be redacted.
     ScopedDisableRedaction no_redaction;
     
-    std::vector<std::string> str_cell_vals;
+    //std::vector<std::string> str_cell_vals;
+    bool first = true;
     for (int i = 0; i < schema_->num_columns(); i++) {
-        std::string cell_str;
+        if (!first) {
+          ret->push_back(delimiter);
+        }
         RowCell cell(this, i);
-        schema_->column(i).DebugCSVCellAppend(cell, &cell_str);
-        str_cell_vals.push_back(cell_str);
+        schema_->column(i).DebugCSVCellAppend(cell, ret);
+        first = false;
+        //str_cell_vals.push_back(cell_str);
     }
-    JoinCSVLineWithDelimiter(str_cell_vals, delimiter, ret);
+    //JoinCSVLineWithDelimiter(str_cell_vals, delimiter, ret);
 }
 
 } // namespace client
