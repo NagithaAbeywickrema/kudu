@@ -224,6 +224,7 @@ const char* const kTabletIdArgDesc = "Tablet Identifier";
 const char* const kTabletIdsCsvArg = "tablet_ids";
 const char* const kTabletIdsCsvArgDesc =
     "Comma-separated list of Tablet Identifiers";
+const char* const kDirArg = "dir";
 
 const char* const kMasterAddressArg = "master_address";
 const char* const kMasterAddressDesc = "Address of a Kudu Master of form "
@@ -234,6 +235,7 @@ const char* const kTServerAddressArg = "tserver_address";
 const char* const kTServerAddressDesc = "Address of a Kudu Tablet Server of "
     "form 'hostname:port'. Port may be omitted if the Tablet Server is bound "
     "to the default port.";
+
 
 namespace {
 

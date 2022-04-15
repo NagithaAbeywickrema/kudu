@@ -493,9 +493,11 @@ Status ExportTable(const RunnerContext &context) {
     RETURN_NOT_OK(CreateKuduClient(context, &client));
 
     const string &table_name = FindOrDie(context.required_args, kTableNameArg);
+    const string &dir = FindOrDie(context.required_args, kDirArg);
+    //std::cout << "dir: " << dir << std::endl;
 
     FLAGS_show_values = true;
-    TableScanner scanner(client, table_name);
+    TableScanner scanner(client, table_name, dir);
     scanner.SetOutput(&cout);
     return scanner.StartExport();
 }
@@ -1317,9 +1319,9 @@ unique_ptr<Mode> BuildTableMode() {
       .ExtraDescription("Export rows from an existing table in CSV format. See the help "
                         "for the --predicates flag on how predicates can be specified.")
       .AddRequiredParameter({ kTableNameArg, "Name of the table to export"})
+      .AddRequiredParameter({ kDirArg, "Directory for output CSV files"})
       .AddOptionalParameter("columns")
-      //.AddOptionalParameter("path")
-      //.AddOptionalParameter("write_buffer_size")
+      .AddOptionalParameter("write_buffer_size")
       .AddOptionalParameter("fill_cache")
       .AddOptionalParameter("num_threads")
       .AddOptionalParameter("predicates")
