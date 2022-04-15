@@ -494,7 +494,6 @@ Status ExportTable(const RunnerContext &context) {
 
     const string &table_name = FindOrDie(context.required_args, kTableNameArg);
     const string &dir = FindOrDie(context.required_args, kDirArg);
-    //std::cout << "dir: " << dir << std::endl;
 
     FLAGS_show_values = true;
     TableScanner scanner(client, table_name, dir);
