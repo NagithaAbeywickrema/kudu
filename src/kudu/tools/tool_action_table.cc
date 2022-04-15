@@ -181,6 +181,7 @@ const char* const kEncodingTypeArg = "encoding_type";
 const char* const kBlockSizeArg = "block_size";
 const char* const kColumnCommentArg = "column_comment";
 const char* const kCreateTableJSONArg = "create_table_json";
+const char* const kDirArg = "dir";
 
 enum PartitionAction {
   ADD,
@@ -1311,7 +1312,6 @@ unique_ptr<Mode> BuildTableMode() {
       .AddOptionalParameter("tablets")
       .Build();
 
-  //TODO: add optional file path parameter
     unique_ptr<Action> export_table =
       ClusterActionBuilder("export", &ExportTable)
       .Description("Export rows from a table in CSV format")

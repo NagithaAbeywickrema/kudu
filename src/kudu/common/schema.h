@@ -424,9 +424,9 @@ class ColumnSchema {
   template<class CellType>
   void DebugCSVCellAppend(const CellType& cell, std::string* ret) const {
     if (is_nullable_ && cell.is_null()) {
-      //Do nothing because NULL is represented as a blank in CSV
+      // Do nothing because NULL is represented as a blank in CSV
     } else {
-      type_info_->AppendCSVStringForValue(cell.ptr(), ret, ',');
+      type_info_->AppendCSVStringForValue(cell.ptr(), ret, ','); //TODO: change delimiter passing
     }
   }
 

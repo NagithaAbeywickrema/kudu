@@ -26,7 +26,6 @@
 #include <map>
 #include <memory>
 #include <set>
-#include <fstream>
 #include <thread>
 
 #include <boost/optional/optional.hpp>
@@ -517,73 +516,49 @@ void TableScanner::ScanTask(const vector<KuduScanToken *>& tokens, Status* threa
 }
 
 void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thread_status) {
-  //std::fstream CSVFile;
-  //std::string base_dir = "/home/nia/backup/kudu_csv/CSVFile/temp"; //TODO: get path from argsv, change name 'path' to 'directory'
-  auto t_id = std::this_thread::get_id(); //TODO: get file making outside the lambda function
+  // Create file directory, then output CSV file
+  auto t_id = std::this_thread::get_id();
   std::stringstream ss;
   ss << t_id;
   std::string thread_id = ss.str();            
   std::string file_name = std::string("csv_") + thread_id + std::string(".csv");
-  string file_path = JoinPathSegments(dir_, file_name); //TODO: dir_ initialization check?
-
-
-  //CSVFile.open(file_path, std::ios::out | std::ios::in | std::ios::app);
-
-
+  string file_path = JoinPathSegments(dir_, file_name); //TODO: dir_ validation
   Env* env = Env::Default();
   WritableFileOptions wr_opts; 
   std::shared_ptr<WritableFile> writer;
   wr_opts.mode = Env::CREATE_OR_OPEN; 
-  env_util::CreateDirsRecursively(env, dir_); //TODO: use RETURN_NOT_OK_PREPEND with extra error description or RETURN_NOT_OK?. NOTE: to inclde RETURN_NOT_OK, lambda must return a Status
-  env_util::OpenFileForWrite(wr_opts, env, file_path, &writer);
+  env_util::CreateDirsRecursively(env, dir_); //TODO: error handling on failure
+  env_util::OpenFileForWrite(wr_opts, env, file_path, &writer); //TODO: error handling on failure
 
-  const int THRESHOLD = FLAGS_write_buffer_size; //TODO: get threshold from argsv
+  // Reserve file write string buffer
+  const int THRESHOLD = FLAGS_write_buffer_size;
   std::string buffer;
   buffer.reserve(THRESHOLD); 
-  *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch) { //TODO: improve file name to include tablet id using KuduScanToken token
-      if (out_ && FLAGS_show_values) {
-        //MutexLock l(output_lock_);
-        //*out_ << FLAGS_write_buffer_size << std::endl;
-        
-          
-        // const KuduSchema* schema = batch.projection_schema();
-        // CSVFile << "thread_id: " << thread_id << std::endl;
-        // CSVFile << (*schema).ToCSVString();
-
-        
+  *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch) {
+      if (out_ && FLAGS_show_values) {  
         buffer.resize(0);
         for (const auto& row : batch)
         {
           std::string row_str; 
-          row.ToCSVString(&row_str, ',');
+          row.ToCSVString(&row_str, ','); //TODO: change delimiter passing
           if (buffer.length() + row_str.length() + 1 >= THRESHOLD)
           {
             if (buffer.length() == 0){
-              //TODO:LOG(WARNING)
+              //TODO:LOG(WARNING). NOTE: buffer size not enough
             } else {
               Slice s(buffer);
               writer->Append(s);
-              //CSVFile << buffer;
               buffer.resize(0);
             }
           }
-          buffer.append(row_str); //TODO: if reserved value is not sufficient an error will occur?
-          buffer.append(1, '\n'); //TODO: clarify line ending for seperate OS
+          buffer.append(row_str);
+          buffer.append(1, '\n'); //TODO: clarify line ending for seperate OS. NOTE: POSIX utils may help
         }
         Slice s(buffer);
         writer->Append(s);
-        //CSVFile << buffer;
-
-        //for (const auto& row : batch) {
-        //    CSVFile << row.ToCSVString() << std::endl;
-        //}
-        
-        
-        
         out_->flush();
       }
   });
-  //CSVFile.close();
   writer->Flush(WritableFile::FLUSH_ASYNC);
   writer->Close();
 }
