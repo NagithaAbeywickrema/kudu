@@ -59,6 +59,16 @@ class TableScanner {
     out_(nullptr) {
   }
 
+  TableScanner(client::sp::shared_ptr<kudu::client::KuduClient> client,
+               std::string table_name,
+               std::string dir):
+    total_count_(0),
+    client_(std::move(client)),
+    table_name_(std::move(table_name)),
+    dir_(std::move(dir)),
+    out_(nullptr) {
+  }
+
   // Set output stream of this tool, or disable output if not set.
   // 'out' must remain valid for the lifetime of this class.
   void SetOutput(std::ostream* out);
@@ -67,6 +77,7 @@ class TableScanner {
   void SetReadMode(kudu::client::KuduScanner::ReadMode mode);
 
   Status StartScan();
+  Status StartExport();
   Status StartCopy();
 
   uint64_t TotalScannedCount() const {
@@ -76,6 +87,7 @@ class TableScanner {
  private:
   enum class WorkType {
     kScan,
+    kExport,
     kCopy
   };
 
@@ -83,6 +95,7 @@ class TableScanner {
   Status ScanData(const std::vector<kudu::client::KuduScanToken*>& tokens,
                   const std::function<void(const kudu::client::KuduScanBatch& batch)>& cb);
   void ScanTask(const std::vector<kudu::client::KuduScanToken*>& tokens, Status* thread_status);
+  void ExportTask(const std::vector<kudu::client::KuduScanToken*>& tokens, Status* thread_status);
   void CopyTask(const std::vector<kudu::client::KuduScanToken*>& tokens, Status* thread_status);
 
   Status AddRow(const client::sp::shared_ptr<kudu::client::KuduTable>& table,
@@ -94,6 +107,7 @@ class TableScanner {
   boost::optional<kudu::client::KuduScanner::ReadMode> mode_;
   client::sp::shared_ptr<kudu::client::KuduClient> client_;
   std::string table_name_;
+  std::string dir_;
   boost::optional<client::sp::shared_ptr<kudu::client::KuduClient>> dst_client_;
   boost::optional<std::string> dst_table_name_;
   std::unique_ptr<ThreadPool> thread_pool_;

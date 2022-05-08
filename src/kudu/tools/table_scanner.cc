@@ -26,6 +26,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <thread>
 
 #include <boost/optional/optional.hpp>
 #include <gflags/gflags.h>
@@ -46,6 +47,7 @@
 #include "kudu/gutil/map-util.h"
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/stl_util.h"
+#include "kudu/gutil/strings/join.h"
 #include "kudu/gutil/strings/split.h"
 #include "kudu/gutil/strings/substitute.h"
 #include "kudu/util/bitmap.h"
@@ -56,6 +58,9 @@
 #include "kudu/util/slice.h"
 #include "kudu/util/stopwatch.h"
 #include "kudu/util/string_case.h"
+#include "kudu/util/env.h"
+#include "kudu/util/env_util.h"
+#include "kudu/util/path_util.h"
 
 using kudu::client::KuduClient;
 using kudu::client::KuduColumnSchema;
@@ -85,6 +90,8 @@ using strings::Substitute;
 DEFINE_bool(create_table, true,
             "Whether to create the destination table if it doesn't exist.");
 DECLARE_string(columns);
+DEFINE_int32(write_buffer_size, 10000, 
+            "Reserved string buffer size when writing to a file.");
 DEFINE_bool(fill_cache, true,
             "Whether to fill block cache when scanning.");
 DECLARE_int32(num_threads);
@@ -508,6 +515,54 @@ void TableScanner::ScanTask(const vector<KuduScanToken *>& tokens, Status* threa
   });
 }
 
+void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thread_status) {
+  // Create file directory, then output CSV file
+  auto t_id = std::this_thread::get_id();
+  std::stringstream ss;
+  ss << t_id;
+  std::string thread_id = ss.str();            
+  std::string file_name = std::string("csv_") + thread_id + std::string(".csv");
+  string file_path = JoinPathSegments(dir_, file_name); //TODO: dir_ validation
+  Env* env = Env::Default();
+  WritableFileOptions wr_opts; 
+  std::shared_ptr<WritableFile> writer;
+  wr_opts.mode = Env::CREATE_OR_OPEN; 
+  env_util::CreateDirsRecursively(env, dir_); //TODO: error handling on failure
+  env_util::OpenFileForWrite(wr_opts, env, file_path, &writer); //TODO: error handling on failure
+
+  // Reserve file write string buffer
+  const int THRESHOLD = FLAGS_write_buffer_size;
+  std::string buffer;
+  buffer.reserve(THRESHOLD); 
+  *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch) {
+      if (out_ && FLAGS_show_values) {  
+        buffer.resize(0);
+        for (const auto& row : batch)
+        {
+          std::string row_str; 
+          row.ToCSVString(&row_str, ','); //TODO: change delimiter passing
+          if (buffer.length() + row_str.length() + 1 >= THRESHOLD)
+          {
+            if (buffer.length() == 0){
+              //TODO:LOG(WARNING). NOTE: buffer size not enough
+            } else {
+              Slice s(buffer);
+              writer->Append(s);
+              buffer.resize(0);
+            }
+          }
+          buffer.append(row_str);
+          buffer.append(1, '\n'); //TODO: clarify line ending for seperate OS. NOTE: POSIX utils may help
+        }
+        Slice s(buffer);
+        writer->Append(s);
+        out_->flush();
+      }
+  });
+  writer->Flush(WritableFile::FLUSH_ASYNC);
+  writer->Close();
+}
+
 void TableScanner::CopyTask(const vector<KuduScanToken*>& tokens, Status* thread_status) {
   client::sp::shared_ptr<KuduTable> dst_table;
   CHECK_OK(dst_client_.get()->OpenTable(*dst_table_name_, &dst_table));
@@ -560,7 +615,7 @@ Status TableScanner::StartWork(WorkType type) {
   RETURN_NOT_OK(builder.SetTimeoutMillis(30000));
 
   // Set projection if needed.
-  if (type == WorkType::kScan) {
+  if (type == WorkType::kScan || type == WorkType::kExport) {
     bool project_all = FLAGS_columns == "*" ||
                        (FLAGS_show_values && FLAGS_columns.empty());
     if (!project_all) {
@@ -603,6 +658,9 @@ Status TableScanner::StartWork(WorkType type) {
     if (type == WorkType::kScan) {
       RETURN_NOT_OK(thread_pool_->Submit([this, t_tokens, t_status]()
                                          { this->ScanTask(*t_tokens, t_status); }));
+    } else if (type == WorkType::kExport) {
+      RETURN_NOT_OK(thread_pool_->Submit([this, t_tokens, t_status]()
+                                         { this->ExportTask(*t_tokens, t_status); }));
     } else {
       CHECK(type == WorkType::kCopy);
       RETURN_NOT_OK(thread_pool_->Submit([this, t_tokens, t_status]()
@@ -632,6 +690,10 @@ Status TableScanner::StartWork(WorkType type) {
 
 Status TableScanner::StartScan() {
   return StartWork(WorkType::kScan);
+}
+
+Status TableScanner::StartExport() {
+  return StartWork(WorkType::kExport);
 }
 
 Status TableScanner::StartCopy() {
