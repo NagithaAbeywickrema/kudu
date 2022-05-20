@@ -92,6 +92,13 @@ DEFINE_bool(create_table, true,
 DECLARE_string(columns);
 DEFINE_int32(write_buffer_size, 10000, 
             "Reserved string buffer size when writing to a file.");
+DEFINE_int32(scan_batch_size, -1, 
+            "The size for scan results batches, in bytes."
+            "A negative value means the server-side default is used," 
+            "where the server-side default is controlled by the tablet" 
+            "server’s --scanner_default_batch_size_bytes flag."
+            "the server-side max value is controlled by the tablet"
+            "server’s --scanner_max_batch_size_bytes flag.");
 DEFINE_bool(fill_cache, true,
             "Whether to fill block cache when scanning.");
 DECLARE_int32(num_threads);
@@ -613,6 +620,9 @@ Status TableScanner::StartWork(WorkType type) {
     RETURN_NOT_OK(builder.SetReadMode(mode_.get()));
   }
   RETURN_NOT_OK(builder.SetTimeoutMillis(30000));
+  if (FLAGS_scan_batch_size > 0){
+    RETURN_NOT_OK(builder.SetBatchSizeBytes(FLAGS_scan_batch_size));
+  }
 
   // Set projection if needed.
   if (type == WorkType::kScan || type == WorkType::kExport) {
