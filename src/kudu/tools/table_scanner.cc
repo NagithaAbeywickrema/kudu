@@ -27,6 +27,7 @@
 #include <memory>
 #include <set>
 #include <thread>
+#include <fstream> //test
 #include <ctime> //test
 
 #include <boost/optional/optional.hpp>
@@ -87,6 +88,7 @@ using std::string;
 using std::unique_ptr;
 using std::vector;
 using strings::Substitute;
+using std::basic_fstream; //test
 
 DEFINE_bool(create_table, true,
             "Whether to create the destination table if it doesn't exist.");
@@ -547,7 +549,8 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
   std::shared_ptr<WritableFile> log_writer; //test
   wr_opts.mode = Env::CREATE_OR_OPEN; 
   env_util::CreateDirsRecursively(env, dir_); //TODO: error handling on failure
-  env_util::OpenFileForWrite(wr_opts, env, file_path, &writer); //TODO: error handling on failure
+  //env_util::OpenFileForWrite(wr_opts, env, file_path, &writer); //TODO: error handling on failure
+  std::fstream csv_file(FilePath, std::fstream::app);
   env_util::OpenFileForWrite(wr_opts, env, log_file_path, &log_writer); //test
 
   double max_cb_elapsed_time = 0; //test
@@ -580,9 +583,10 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
             if (buffer.length() < min_buffer_size){ //test
               min_buffer_size = buffer.length();
             }
-            Slice s(buffer);
+            //Slice s(buffer);
             if (FLAGS_write_to_file > 0){
-              writer->Append(s);
+              //writer->Append(s);
+              csv_file << buffer;
             }
             buffer.resize(0);
           }
@@ -590,10 +594,12 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
         buffer.append(row_str);
         buffer.append(1, '\n'); //TODO: clarify line ending for seperate OS. NOTE: POSIX utils may help
       }
-      Slice s(buffer);
+      //Slice s(buffer);
       if (FLAGS_write_to_file > 0){
-        writer->Append(s);
+        //writer->Append(s);
+        csv_file << buffer;
       }
+      csv_file.flush();
       out_->flush();
     }
     sw_test.stop(); //test
@@ -609,9 +615,10 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
       log_writer->Append(s_test);
     }
   });
-  writer->Flush(WritableFile::FLUSH_ASYNC);
+  //writer->Flush(WritableFile::FLUSH_ASYNC);
   log_writer->Flush(WritableFile::FLUSH_ASYNC); //test
-  writer->Close();
+  //writer->Close();
+  csv_file.close();
   log_writer->Close(); //test
 }
 
