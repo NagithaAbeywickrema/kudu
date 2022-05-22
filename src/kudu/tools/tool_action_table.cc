@@ -1328,6 +1328,7 @@ unique_ptr<Mode> BuildTableMode() {
       .AddOptionalParameter("tablets")
 
       .AddOptionalParameter("keep_alive") //test
+      .AddOptionalParameter("write_to_file") //test
 
       .Build();
 

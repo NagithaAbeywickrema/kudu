@@ -131,6 +131,8 @@ DEFINE_string(write_type, "insert",
 
 DEFINE_int32(keep_alive, -1, 
             "test var keep_alive"); //test
+DEFINE_int32(write_to_file, -1, 
+            "test var write_to_file"); //test
 
 static bool ValidateWriteType(const char* flag_name,
                               const string& flag_value) {
@@ -560,7 +562,9 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
             //TODO:LOG(WARNING). NOTE: buffer size not enough
           } else {
             Slice s(buffer);
-            writer->Append(s);
+            if (FLAGS_write_to_file > 0){
+              writer->Append(s);
+            }
             buffer.resize(0);
           }
         }
@@ -568,7 +572,9 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
         buffer.append(1, '\n'); //TODO: clarify line ending for seperate OS. NOTE: POSIX utils may help
       }
       Slice s(buffer);
-      writer->Append(s);
+      if (FLAGS_write_to_file > 0){
+        writer->Append(s);
+      }
       out_->flush();
     }
   });
