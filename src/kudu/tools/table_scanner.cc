@@ -550,7 +550,7 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
   wr_opts.mode = Env::CREATE_OR_OPEN; 
   env_util::CreateDirsRecursively(env, dir_); //TODO: error handling on failure
   //env_util::OpenFileForWrite(wr_opts, env, file_path, &writer); //TODO: error handling on failure
-  std::fstream csv_file(FilePath, std::fstream::app);
+  std::fstream csv_file(file_path, std::fstream::app);
   env_util::OpenFileForWrite(wr_opts, env, log_file_path, &log_writer); //test
 
   double max_cb_elapsed_time = 0; //test
