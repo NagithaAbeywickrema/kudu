@@ -129,6 +129,9 @@ DEFINE_string(write_type, "insert",
               "'upsert' or the empty string. If the empty string, data will not be copied "
               "(useful when create_table is 'true').");
 
+DEFINE_int32(keep_alive, -1, 
+            "test var keep_alive"); //test
+
 static bool ValidateWriteType(const char* flag_name,
                               const string& flag_value) {
   const vector<string> allowed_values = { "insert", "upsert", "" };
@@ -493,6 +496,9 @@ Status TableScanner::ScanData(const std::vector<kudu::client::KuduScanToken*>& t
     while (scanner->HasMoreRows()) {
       KuduScanBatch batch;
       RETURN_NOT_OK(scanner->NextBatch(&batch));
+      if (FLAGS_keep_alive > 0){
+        RETURN_NOT_OK(scanner->KeepAlive());
+      }
       count += batch.NumRows();
       total_count_.IncrementBy(batch.NumRows());
       cb(batch);

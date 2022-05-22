@@ -1326,6 +1326,9 @@ unique_ptr<Mode> BuildTableMode() {
       .AddOptionalParameter("num_threads")
       .AddOptionalParameter("predicates")
       .AddOptionalParameter("tablets")
+
+      .AddOptionalParameter("keep_alive") //test
+
       .Build();
 
   unique_ptr<Action> copy_table =
