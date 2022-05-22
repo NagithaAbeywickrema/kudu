@@ -542,29 +542,29 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
   std::string buffer;
   buffer.reserve(THRESHOLD); 
   *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch) {
-      if (out_ && FLAGS_show_values) {  
-        buffer.resize(0);
-        for (const auto& row : batch)
+    if (out_ && FLAGS_show_values) {  
+      buffer.resize(0);
+      for (const auto& row : batch)
+      {
+        std::string row_str; 
+        row.ToCSVString(&row_str, ','); //TODO: change delimiter passing
+        if (buffer.length() + row_str.length() + 1 >= THRESHOLD)
         {
-          std::string row_str; 
-          row.ToCSVString(&row_str, ','); //TODO: change delimiter passing
-          if (buffer.length() + row_str.length() + 1 >= THRESHOLD)
-          {
-            if (buffer.length() == 0){
-              //TODO:LOG(WARNING). NOTE: buffer size not enough
-            } else {
-              Slice s(buffer);
-              writer->Append(s);
-              buffer.resize(0);
-            }
+          if (buffer.length() == 0){
+            //TODO:LOG(WARNING). NOTE: buffer size not enough
+          } else {
+            Slice s(buffer);
+            writer->Append(s);
+            buffer.resize(0);
           }
-          buffer.append(row_str);
-          buffer.append(1, '\n'); //TODO: clarify line ending for seperate OS. NOTE: POSIX utils may help
         }
-        Slice s(buffer);
-        writer->Append(s);
-        out_->flush();
+        buffer.append(row_str);
+        buffer.append(1, '\n'); //TODO: clarify line ending for seperate OS. NOTE: POSIX utils may help
       }
+      Slice s(buffer);
+      writer->Append(s);
+      out_->flush();
+    }
   });
   writer->Flush(WritableFile::FLUSH_ASYNC);
   writer->Close();
