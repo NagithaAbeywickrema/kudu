@@ -27,6 +27,7 @@
 #include <memory>
 #include <set>
 #include <thread>
+#include <ctime> //test
 
 #include <boost/optional/optional.hpp>
 #include <gflags/gflags.h>
@@ -537,19 +538,30 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
   ss << t_id;
   std::string thread_id = ss.str();            
   std::string file_name = std::string("csv_") + thread_id + std::string(".csv");
+  std::string log_file_name = std::string("log_") + thread_id + std::string(".txt"); //test
   string file_path = JoinPathSegments(dir_, file_name); //TODO: dir_ validation
+  string log_file_path = JoinPathSegments(dir_, log_file_name); //test
   Env* env = Env::Default();
   WritableFileOptions wr_opts; 
   std::shared_ptr<WritableFile> writer;
+  std::shared_ptr<WritableFile> log_writer; //test
   wr_opts.mode = Env::CREATE_OR_OPEN; 
   env_util::CreateDirsRecursively(env, dir_); //TODO: error handling on failure
   env_util::OpenFileForWrite(wr_opts, env, file_path, &writer); //TODO: error handling on failure
+  env_util::OpenFileForWrite(wr_opts, env, log_file_path, &log_writer); //test
+
+  double max_cb_elapsed_time = 0; //test
 
   // Reserve file write string buffer
   const int THRESHOLD = FLAGS_write_buffer_size;
   std::string buffer;
   buffer.reserve(THRESHOLD); 
   *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch) {
+    Stopwatch sw_test(Stopwatch::THIS_THREAD); //test
+    sw_test.start(); //test
+    std::size_t max_buffer_size = 0; //test
+    std::size_t min_buffer_size = THRESHOLD; //test
+
     if (out_ && FLAGS_show_values) {  
       buffer.resize(0);
       for (const auto& row : batch)
@@ -560,7 +572,14 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
         {
           if (buffer.length() == 0){
             //TODO:LOG(WARNING). NOTE: buffer size not enough
+            min_buffer_size = buffer.length(); //test
           } else {
+            if (buffer.length() > max_buffer_size){ //test
+              max_buffer_size = buffer.length();
+            }
+            if (buffer.length() < min_buffer_size){ //test
+              min_buffer_size = buffer.length();
+            }
             Slice s(buffer);
             if (FLAGS_write_to_file > 0){
               writer->Append(s);
@@ -577,9 +596,23 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
       }
       out_->flush();
     }
+    sw_test.stop(); //test
+    double elapsed_time = sw_test.elapsed().wall_millis(); //test
+    if (elapsed_time > max_cb_elapsed_time){ //test
+      time_t now = time(0);
+      tm *ltm = localtime(&now);
+      max_cb_elapsed_time = elapsed_time;
+      std::stringstream ss;
+      ss << "[" << 5+ltm->tm_hour << ":" << ltm->tm_min << ":" << ltm->tm_sec << "] " << "[max_cb_elapsed_time: " << max_cb_elapsed_time << " ms] " << "[NumRows: " << batch.NumRows() << "] " << "[direct_data.size: " << batch.direct_data().size() << "] " << "[indirect_data.size: " << batch.indirect_data().size() << "] \n";
+      std::string log_str = ss.str();
+      Slice s_test(log_str);
+      log_writer->Append(s_test);
+    }
   });
   writer->Flush(WritableFile::FLUSH_ASYNC);
+  log_writer->Flush(WritableFile::FLUSH_ASYNC); //test
   writer->Close();
+  log_writer->Close(); //test
 }
 
 void TableScanner::CopyTask(const vector<KuduScanToken*>& tokens, Status* thread_status) {
