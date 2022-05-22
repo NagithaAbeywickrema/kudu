@@ -90,9 +90,9 @@ using strings::Substitute;
 DEFINE_bool(create_table, true,
             "Whether to create the destination table if it doesn't exist.");
 DECLARE_string(columns);
-DEFINE_int32(write_buffer_size, 10000, 
+DEFINE_int64(write_buffer_size, 10000, 
             "Reserved string buffer size when writing to a file.");
-DEFINE_int32(scan_batch_size, -1, 
+DEFINE_int64(scan_batch_size, -1, 
             "The size for scan results batches, in bytes."
             "A negative value means the server-side default is used," 
             "where the server-side default is controlled by the tablet" 
