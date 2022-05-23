@@ -541,7 +541,7 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
   std::shared_ptr<WritableFile> writer;
   wr_opts.mode = Env::CREATE_OR_OPEN; 
   env_util::CreateDirsRecursively(env, dir_); //TODO: error handling on failure
-  std::fstream csv_file(FilePath, std::fstream::app); //TODO: error handling on failure
+  std::fstream csv_file(file_path, std::fstream::app); //TODO: error handling on failure
 
   // Reserve file write string buffer
   const int THRESHOLD = FLAGS_write_buffer_size;
