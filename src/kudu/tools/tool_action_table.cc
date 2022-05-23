@@ -1322,6 +1322,7 @@ unique_ptr<Mode> BuildTableMode() {
       .AddOptionalParameter("columns")
       .AddOptionalParameter("write_buffer_size")
       .AddOptionalParameter("scan_batch_size")
+      .AddOptionalParameter("keep_alive_ms")
       .AddOptionalParameter("fill_cache")
       .AddOptionalParameter("num_threads")
       .AddOptionalParameter("predicates")

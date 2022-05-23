@@ -99,6 +99,11 @@ DEFINE_int32(scan_batch_size, -1,
             "server’s --scanner_default_batch_size_bytes flag."
             "the server-side max value is controlled by the tablet"
             "server’s --scanner_max_batch_size_bytes flag.");
+DEFINE_int64(keep_alive_ms, -1, 
+            "Time interval in milliseconds to reset tablet scanner timeout in tserver."
+            "Half the value of scanner_ttl_ms flag in tserver configuration is recommended."
+            "Will only try to keep scanner alive if keep_alive_ms > 0 and Recommended"
+            "if I/O throughput is low");
 DEFINE_bool(fill_cache, true,
             "Whether to fill block cache when scanning.");
 DECLARE_int32(num_threads);
@@ -542,29 +547,29 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
   std::string buffer;
   buffer.reserve(THRESHOLD); 
   *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch) {
-      if (out_ && FLAGS_show_values) {  
-        buffer.resize(0);
-        for (const auto& row : batch)
+    if (out_ && FLAGS_show_values) {  
+      buffer.resize(0);
+      for (const auto& row : batch)
+      {
+        std::string row_str; 
+        row.ToCSVString(&row_str, ','); //TODO: change delimiter passing
+        if (buffer.length() + row_str.length() + 1 >= THRESHOLD)
         {
-          std::string row_str; 
-          row.ToCSVString(&row_str, ','); //TODO: change delimiter passing
-          if (buffer.length() + row_str.length() + 1 >= THRESHOLD)
-          {
-            if (buffer.length() == 0){
-              //TODO:LOG(WARNING). NOTE: buffer size not enough
-            } else {
-              Slice s(buffer);
-              writer->Append(s);
-              buffer.resize(0);
-            }
+          if (buffer.length() == 0){
+            //TODO:LOG(WARNING). NOTE: buffer size not enough
+          } else {
+            Slice s(buffer);
+            writer->Append(s);
+            buffer.resize(0);
           }
-          buffer.append(row_str);
-          buffer.append(1, '\n'); //TODO: clarify line ending for seperate OS. NOTE: POSIX utils may help
         }
-        Slice s(buffer);
-        writer->Append(s);
-        out_->flush();
+        buffer.append(row_str);
+        buffer.append(1, '\n'); //TODO: clarify line ending for seperate OS. NOTE: POSIX utils may help
       }
+      Slice s(buffer);
+      writer->Append(s);
+      out_->flush();
+    }
   });
   writer->Flush(WritableFile::FLUSH_ASYNC);
   writer->Close();
