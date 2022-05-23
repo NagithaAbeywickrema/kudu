@@ -27,6 +27,7 @@
 #include <memory>
 #include <set>
 #include <thread>
+#include <fstream>
 
 #include <boost/optional/optional.hpp>
 #include <gflags/gflags.h>
@@ -103,7 +104,7 @@ DEFINE_int64(keep_alive_ms, -1,
             "Time interval in milliseconds to reset tablet scanner timeout in tserver."
             "Half the value of scanner_ttl_ms flag in tserver configuration is recommended."
             "Will only try to keep scanner alive if keep_alive_ms > 0 and Recommended"
-            "if I/O throughput is low");
+            "if I/O throughput is low.");
 DEFINE_bool(fill_cache, true,
             "Whether to fill block cache when scanning.");
 DECLARE_int32(num_threads);
@@ -540,7 +541,7 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
   std::shared_ptr<WritableFile> writer;
   wr_opts.mode = Env::CREATE_OR_OPEN; 
   env_util::CreateDirsRecursively(env, dir_); //TODO: error handling on failure
-  env_util::OpenFileForWrite(wr_opts, env, file_path, &writer); //TODO: error handling on failure
+  std::fstream csv_file(FilePath, std::fstream::app); //TODO: error handling on failure
 
   // Reserve file write string buffer
   const int THRESHOLD = FLAGS_write_buffer_size;
@@ -558,21 +559,19 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
           if (buffer.length() == 0){
             //TODO:LOG(WARNING). NOTE: buffer size not enough
           } else {
-            Slice s(buffer);
-            writer->Append(s);
+            csv_file << buffer;
             buffer.resize(0);
           }
         }
         buffer.append(row_str);
         buffer.append(1, '\n'); //TODO: clarify line ending for seperate OS. NOTE: POSIX utils may help
       }
-      Slice s(buffer);
-      writer->Append(s);
+      csv_file << buffer;
+      csv_file.flush();
       out_->flush();
     }
   });
-  writer->Flush(WritableFile::FLUSH_ASYNC);
-  writer->Close();
+  csv_file.close();
 }
 
 void TableScanner::CopyTask(const vector<KuduScanToken*>& tokens, Status* thread_status) {
