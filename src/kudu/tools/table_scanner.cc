@@ -29,6 +29,7 @@
 #include <thread>
 #include <fstream> //test
 #include <ctime> //test
+#include <chrono>
 
 #include <boost/optional/optional.hpp>
 #include <gflags/gflags.h>
@@ -501,12 +502,9 @@ Status TableScanner::ScanData(const std::vector<kudu::client::KuduScanToken*>& t
     while (scanner->HasMoreRows()) {
       KuduScanBatch batch;
       RETURN_NOT_OK(scanner->NextBatch(&batch));
-      if (FLAGS_keep_alive > 0){
-        RETURN_NOT_OK(scanner->KeepAlive());
-      }
       count += batch.NumRows();
       total_count_.IncrementBy(batch.NumRows());
-      cb(batch);
+      cb(batch, scanner);
     }
 
     sw.stop();
@@ -522,7 +520,7 @@ Status TableScanner::ScanData(const std::vector<kudu::client::KuduScanToken*>& t
 }
 
 void TableScanner::ScanTask(const vector<KuduScanToken *>& tokens, Status* thread_status) {
-  *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch) {
+  *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch, std::unique_ptr<kudu::client::KuduScanner>& scanner) {
     if (out_ && FLAGS_show_values) {
       MutexLock l(output_lock_);
       for (const auto& row : batch) {
@@ -559,13 +557,14 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
   const int THRESHOLD = FLAGS_write_buffer_size;
   std::string buffer;
   buffer.reserve(THRESHOLD); 
-  *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch) {
+  *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch, std::unique_ptr<kudu::client::KuduScanner>& scanner) {
     Stopwatch sw_test(Stopwatch::THIS_THREAD); //test
     sw_test.start(); //test
     std::size_t max_buffer_size = 0; //test
     std::size_t min_buffer_size = THRESHOLD; //test
     int file_writes = 0; //test
     double elapsed_time_pre_flush = 0; //test
+    auto keep_alive_end_time = chrono::steady_clock::now();
 
     if (out_ && FLAGS_show_values) {  
       buffer.resize(0);
@@ -588,6 +587,10 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
             //Slice s(buffer);
             if (FLAGS_write_to_file > 0){
               //writer->Append(s);
+              if (FLAGS_keep_alive > 0 && chrono::steady_clock::now() > keep_alive_end_time){
+                RETURN_NOT_OK(scanner->KeepAlive());
+                keep_alive_end_time = chrono::steady_clock::now() + std::chrono::milliseconds(FLAGS_keep_alive);
+              }
               csv_file << buffer;
               file_writes++;
             }
@@ -600,6 +603,10 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
       //Slice s(buffer);
       if (FLAGS_write_to_file > 0){
         //writer->Append(s);
+        if (FLAGS_keep_alive > 0 && chrono::steady_clock::now() > keep_alive_end_time){
+          RETURN_NOT_OK(scanner->KeepAlive());
+          keep_alive_end_time = chrono::steady_clock::now() + std::chrono::milliseconds(FLAGS_keep_alive);
+        }
         csv_file << buffer;
         file_writes++;
       }
@@ -638,7 +645,7 @@ void TableScanner::CopyTask(const vector<KuduScanToken*>& tokens, Status* thread
   CHECK_OK(session->SetErrorBufferSpace(1024));
   session->SetTimeoutMillis(30000);
 
-  *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch) {
+  *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch, std::unique_ptr<kudu::client::KuduScanner>& scanner) {
     for (const auto& row : batch) {
       CHECK_OK(AddRow(dst_table, dst_table_schema, row, session));
     }
