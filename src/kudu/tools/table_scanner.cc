@@ -564,6 +564,8 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
     sw_test.start(); //test
     std::size_t max_buffer_size = 0; //test
     std::size_t min_buffer_size = THRESHOLD; //test
+    int file_writes = 0; //test
+    double elapsed_time_pre_flush = 0; //test
 
     if (out_ && FLAGS_show_values) {  
       buffer.resize(0);
@@ -587,6 +589,7 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
             if (FLAGS_write_to_file > 0){
               //writer->Append(s);
               csv_file << buffer;
+              file_writes++;
             }
             buffer.resize(0);
           }
@@ -598,7 +601,9 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
       if (FLAGS_write_to_file > 0){
         //writer->Append(s);
         csv_file << buffer;
+        file_writes++;
       }
+      elapsed_time_pre_flush = sw_test.elapsed().wall_millis(); //test
       csv_file.flush();
       out_->flush();
     }
@@ -609,7 +614,7 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
       tm *ltm = localtime(&now);
       max_cb_elapsed_time = elapsed_time;
       std::stringstream ss;
-      ss << "[" << 5+ltm->tm_hour << ":" << ltm->tm_min << ":" << ltm->tm_sec << "] " << "[max_cb_elapsed_time: " << max_cb_elapsed_time << " ms] " << "[NumRows: " << batch.NumRows() << "] " << "[direct_data.size: " << batch.direct_data().size() << "] " << "[indirect_data.size: " << batch.indirect_data().size() << "] \n";
+      ss << "[" << 5+ltm->tm_hour << ":" << ltm->tm_min << ":" << ltm->tm_sec << "] " << "[max_cb_elapsed_time: " << max_cb_elapsed_time << " ms] " << "[elapsed_time_pre_flush: " << elapsed_time_pre_flush << "] " << "[file_writes: " << file_writes << "] " << "[NumRows: " << batch.NumRows() << "] " << "[direct_data.size: " << batch.direct_data().size() << "] " << "[indirect_data.size: " << batch.indirect_data().size() << "] \n";
       std::string log_str = ss.str();
       Slice s_test(log_str);
       log_writer->Append(s_test);
