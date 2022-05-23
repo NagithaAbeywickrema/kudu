@@ -486,7 +486,7 @@ Status TableScanner::AddRow(const client::sp::shared_ptr<KuduTable>& table,
 }
 
 Status TableScanner::ScanData(const std::vector<kudu::client::KuduScanToken*>& tokens,
-                              const std::function<void(const KuduScanBatch& batch, std::unique_ptr<kudu::client::KuduScanner)>& cb) {
+                              const std::function<void(const KuduScanBatch& batch, std::unique_ptr<kudu::client::KuduScanner>& scanner)>& cb) {
 
   for (auto token : tokens) {
     Stopwatch sw(Stopwatch::THIS_THREAD);
