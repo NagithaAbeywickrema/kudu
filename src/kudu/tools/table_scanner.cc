@@ -550,7 +550,9 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
   const int THRESHOLD = FLAGS_write_buffer_size;
   std::string buffer;
   buffer.reserve(THRESHOLD);
+  
   bool header_included = false; 
+  auto call_keep_alive_at = std::chrono::steady_clock::now();
   *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch, std::unique_ptr<kudu::client::KuduScanner>& scanner) {
     if (out_ && FLAGS_show_values) {  
       // Write header to file
@@ -561,7 +563,6 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
       }
 
       // Write row data to file
-      auto call_keep_alive_at = std::chrono::steady_clock::now();
       buffer.resize(0);
       for (const auto& row : batch)
       {
