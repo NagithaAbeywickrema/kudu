@@ -92,6 +92,8 @@ using strings::Substitute;
 DEFINE_bool(create_table, true,
             "Whether to create the destination table if it doesn't exist.");
 DECLARE_string(columns);
+DEFINE_bool(header, true, 
+            "Whether to include header with column details.");
 DEFINE_int64(write_buffer_size, 10000, 
             "Reserved string buffer size when writing to a file.");
 DEFINE_int64(scan_batch_size, -1, 
@@ -547,9 +549,18 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
   // Reserve file write string buffer
   const int THRESHOLD = FLAGS_write_buffer_size;
   std::string buffer;
-  buffer.reserve(THRESHOLD); 
+  buffer.reserve(THRESHOLD);
+  bool header_included = false; 
   *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch, std::unique_ptr<kudu::client::KuduScanner>& scanner) {
     if (out_ && FLAGS_show_values) {  
+      // Write header to file
+      if (FLAGS_header && !header_included){
+        const KuduSchema schema = batch.projection_schema();
+        //csv_file << schema.ToCSVString() << std::endl;
+        header_included =true;
+      }
+
+      // Write row data to file
       auto call_keep_alive_at = std::chrono::steady_clock::now();
       buffer.resize(0);
       for (const auto& row : batch)
