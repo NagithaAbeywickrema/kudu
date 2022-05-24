@@ -133,7 +133,7 @@ DEFINE_string(write_type, "insert",
               "'upsert' or the empty string. If the empty string, data will not be copied "
               "(useful when create_table is 'true').");
 
-DEFINE_int32(keep_alive, -1, 
+DEFINE_int64(keep_alive, -1, 
             "test var keep_alive"); //test
 DEFINE_int32(write_to_file, -1, 
             "test var write_to_file"); //test
@@ -552,6 +552,8 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
   env_util::OpenFileForWrite(wr_opts, env, log_file_path, &log_writer); //test
 
   double max_cb_elapsed_time = 0; //test
+  auto keep_alive_end_time = std::chrono::steady_clock::now();
+  auto prev_keep_alive_end_time = keep_alive_end_time;
 
   // Reserve file write string buffer
   const int THRESHOLD = FLAGS_write_buffer_size;
@@ -564,8 +566,7 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
     std::size_t min_buffer_size = THRESHOLD; //test
     int file_writes = 0; //test
     double elapsed_time_pre_flush = 0; //test
-    auto keep_alive_end_time = std::chrono::steady_clock::now();
-    auto prev_keep_alive_end_time = keep_alive_end_time;
+    
 
     if (out_ && FLAGS_show_values) {  
       buffer.resize(0);
