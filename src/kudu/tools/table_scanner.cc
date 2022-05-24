@@ -588,6 +588,10 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
             if (FLAGS_write_to_file > 0){
               //writer->Append(s);
               if (FLAGS_keep_alive > 0 && std::chrono::steady_clock::now() > keep_alive_end_time){
+                {
+                  MutexLock l(output_lock_);
+                  *out_ << "[thread_id: " << thread_id << "] " << "[time_interval: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - keep_alive_end_time).count() << " ms] " << std::endl;
+                }
                 scanner->KeepAlive();
                 keep_alive_end_time = std::chrono::steady_clock::now() + std::chrono::milliseconds(FLAGS_keep_alive);
               }
@@ -604,6 +608,10 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
       if (FLAGS_write_to_file > 0){
         //writer->Append(s);
         if (FLAGS_keep_alive > 0 && std::chrono::steady_clock::now() > keep_alive_end_time){
+          {
+            MutexLock l(output_lock_);
+            *out_ << "[thread_id: " << thread_id << "] " << "[time_interval: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - keep_alive_end_time).count() << " ms] " << std::endl;
+          }
           scanner->KeepAlive();
           keep_alive_end_time = std::chrono::steady_clock::now() + std::chrono::milliseconds(FLAGS_keep_alive);
         }
