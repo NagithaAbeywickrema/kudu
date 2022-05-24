@@ -555,7 +555,7 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
       // Write header to file
       if (FLAGS_header && !header_included){
         const KuduSchema* schema = batch.projection_schema();
-        csv_file << schema->ToCSVString() << std::endl; //TODO: add delimiter passing
+        csv_file << schema->ToCSVString(); //TODO: add delimiter passing
         header_included =true;
       }
 
