@@ -540,9 +540,6 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
   std::string file_name = std::string("csv_") + thread_id + std::string(".csv");
   string file_path = JoinPathSegments(dir_, file_name); //TODO: dir_ validation
   Env* env = Env::Default();
-  WritableFileOptions wr_opts; 
-  std::shared_ptr<WritableFile> writer;
-  wr_opts.mode = Env::CREATE_OR_OPEN; 
   env_util::CreateDirsRecursively(env, dir_); //TODO: error handling on failure
   std::fstream csv_file(file_path, std::fstream::app); //TODO: error handling on failure
 
