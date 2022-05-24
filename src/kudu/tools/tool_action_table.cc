@@ -1320,6 +1320,7 @@ unique_ptr<Mode> BuildTableMode() {
       .AddRequiredParameter({ kTableNameArg, "Name of the table to export"})
       .AddRequiredParameter({ kDirArg, "Directory for output CSV files"})
       .AddOptionalParameter("columns")
+      .AddOptionalParameter("header")
       .AddOptionalParameter("write_buffer_size")
       .AddOptionalParameter("scan_batch_size")
       .AddOptionalParameter("keep_alive_ms")
