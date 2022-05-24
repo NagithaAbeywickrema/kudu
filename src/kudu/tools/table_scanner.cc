@@ -550,7 +550,7 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
   const int THRESHOLD = FLAGS_write_buffer_size;
   std::string buffer;
   buffer.reserve(THRESHOLD);
-  
+
   bool header_included = false; 
   auto call_keep_alive_at = std::chrono::steady_clock::now();
   *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch, std::unique_ptr<kudu::client::KuduScanner>& scanner) {
@@ -558,7 +558,8 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
       // Write header to file
       if (FLAGS_header && !header_included){
         const KuduSchema schema = batch.projection_schema();
-        //csv_file << schema.ToCSVString() << std::endl;
+        csv_file << schema.ToCSVString() << std::endl; //TODO: add delimiter passing
+        csv_file << schema.ToString() << std::endl; //TODO: add delimiter passing
         header_included =true;
       }
 

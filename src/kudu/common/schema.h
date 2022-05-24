@@ -265,6 +265,10 @@ class ColumnSchema {
   // name.
   std::string ToString(ToStringMode mode = ToStringMode::WITHOUT_ATTRIBUTES) const;
 
+  // Return a string in CSV format, identifying this column, including its
+  // name.
+  std::string ToCSVString(ToStringMode mode = ToStringMode::WITHOUT_ATTRIBUTES) const;
+
   // Same as above, but only including the type information.
   // For example, "STRING NOT NULL".
   std::string TypeToString() const;
@@ -797,6 +801,10 @@ class Schema {
   // Stringify this Schema. This is not particularly efficient,
   // so should only be used when necessary for output.
   std::string ToString(ToStringMode mode = ToStringMode::WITH_COLUMN_IDS) const;
+
+  // Stringify this Schema in CSV format. This is not particularly efficient,
+  // so should only be used when necessary for output.
+  std::string ToCSVString(ToStringMode mode = ToStringMode::WITH_COLUMN_IDS) const;
 
   // Compare column ids in Equals() method.
   enum SchemaComparisonType {
