@@ -565,6 +565,7 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
     int file_writes = 0; //test
     double elapsed_time_pre_flush = 0; //test
     auto keep_alive_end_time = std::chrono::steady_clock::now();
+    auto prev_keep_alive_end_time = keep_alive_end_time;
 
     if (out_ && FLAGS_show_values) {  
       buffer.resize(0);
@@ -590,9 +591,10 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
               if (FLAGS_keep_alive > 0 && std::chrono::steady_clock::now() > keep_alive_end_time){
                 {
                   MutexLock l(output_lock_);
-                  *out_ << "[thread_id: " << thread_id << "] " << "[time_interval: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - keep_alive_end_time).count() << " ms] " << std::endl;
+                  *out_ << "[thread_id: " << thread_id << "] " << "[time_interval: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - prev_keep_alive_end_time).count() << " ms] " << std::endl;
                 }
                 scanner->KeepAlive();
+                prev_keep_alive_end_time = keep_alive_end_time;
                 keep_alive_end_time = std::chrono::steady_clock::now() + std::chrono::milliseconds(FLAGS_keep_alive);
               }
               csv_file << buffer;
@@ -610,9 +612,10 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
         if (FLAGS_keep_alive > 0 && std::chrono::steady_clock::now() > keep_alive_end_time){
           {
             MutexLock l(output_lock_);
-            *out_ << "[thread_id: " << thread_id << "] " << "[time_interval: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - keep_alive_end_time).count() << " ms] " << std::endl;
+            *out_ << "[thread_id: " << thread_id << "] " << "[time_interval: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - prev_keep_alive_end_time).count() << " ms] " << std::endl;
           }
           scanner->KeepAlive();
+          prev_keep_alive_end_time = keep_alive_end_time;
           keep_alive_end_time = std::chrono::steady_clock::now() + std::chrono::milliseconds(FLAGS_keep_alive);
         }
         csv_file << buffer;
