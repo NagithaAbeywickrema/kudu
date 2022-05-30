@@ -485,6 +485,17 @@ struct DataTypeTraits<BINARY> {
     const Slice *s = reinterpret_cast<const Slice *>(val);
     std::string src_str = s->ToString();
 
+    if (!escaping){
+      if(!quote_minimal){
+        str->push_back('"');
+      }
+      str->append(s->ToString());
+      if(!quote_minimal){
+        str->push_back('"');
+      }
+      return
+    }
+
     // Quadruple the original size, for C style escaping, plus one byte for
     // the closing \0.
     const int dest_length = src_str.size() * 4 + 1;
@@ -643,6 +654,17 @@ struct DataTypeTraits<STRING> : public DerivedTypeTraits<BINARY>{
   static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) { //TODO: move double escaping into string gutil
     const Slice *s = reinterpret_cast<const Slice *>(val);
     std::string src_str = s->ToString();
+
+    if (!escaping){
+      if(!quote_minimal){
+        str->push_back('"');
+      }
+      str->append(s->ToString());
+      if(!quote_minimal){
+        str->push_back('"');
+      }
+      return
+    }
 
     // Quadruple the original size, for C style escaping, plus one byte for
     // the closing \0.
@@ -829,6 +851,17 @@ struct DataTypeTraits<VARCHAR> : public DerivedTypeTraits<BINARY>{
   static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) { //TODO: move double escaping into string gutil
     const Slice *s = reinterpret_cast<const Slice *>(val);
     std::string src_str = s->ToString();
+
+    if (!escaping){
+      if(!quote_minimal){
+        str->push_back('"');
+      }
+      str->append(s->ToString());
+      if(!quote_minimal){
+        str->push_back('"');
+      }
+      return
+    }
 
     // Quadruple the original size, for C style escaping, plus one byte for
     // the closing \0.

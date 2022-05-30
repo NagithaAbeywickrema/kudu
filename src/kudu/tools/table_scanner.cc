@@ -94,7 +94,7 @@ DEFINE_bool(create_table, true,
 DECLARE_string(columns);
 DEFINE_bool(header, true, 
             "Whether to include header with column details.");
-DEFINE_bool(escaping, true, 
+DEFINE_bool(escaping, true, //TODO: change name from escaping to escape
             "Whether to do character escaping.");
 DEFINE_int64(write_buffer_size, 10000, 
             "Reserved string buffer size when writing to a file.");
