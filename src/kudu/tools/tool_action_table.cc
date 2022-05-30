@@ -1321,6 +1321,7 @@ unique_ptr<Mode> BuildTableMode() {
       .AddRequiredParameter({ kDirArg, "Directory for output CSV files"})
       .AddOptionalParameter("columns")
       .AddOptionalParameter("header")
+      .AddOptionalParameter("escaping")
       .AddOptionalParameter("write_buffer_size")
       .AddOptionalParameter("scan_batch_size")
       .AddOptionalParameter("keep_alive_ms")

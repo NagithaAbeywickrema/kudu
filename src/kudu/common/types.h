@@ -64,7 +64,7 @@ class TypeInfo {
   const std::string& name() const { return name_; }
   const size_t size() const { return size_; }
   void AppendDebugStringForValue(const void *ptr, std::string *str) const;
-  void AppendCSVStringForValue(const void *ptr, std::string *str, char delimiter, bool quote_minimal = false) const;
+  void AppendCSVStringForValue(const void *ptr, std::string *str, char delimiter, bool quote_minimal = false, , bool escaping = true) const;
   int Compare(const void *lhs, const void *rhs) const;
   // Returns true if increment(a) is equal to b.
   bool AreConsecutive(const void* a, const void* b) const;
@@ -148,7 +148,7 @@ struct DataTypeTraits<UINT8> {
   static void AppendDebugStringForValue(const void *val, std::string *str) {
     str->append(SimpleItoa(*reinterpret_cast<const uint8_t *>(val)));
   }
-  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal) {
+  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) {
     AppendDebugStringForValue(val, str);
   }
   static int Compare(const void *lhs, const void *rhs) {
@@ -178,7 +178,7 @@ struct DataTypeTraits<INT8> {
   static void AppendDebugStringForValue(const void *val, std::string *str) {
     str->append(SimpleItoa(*reinterpret_cast<const int8_t *>(val)));
   }
-  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal) {
+  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) {
     AppendDebugStringForValue(val, str);
   }
   static int Compare(const void *lhs, const void *rhs) {
@@ -208,7 +208,7 @@ struct DataTypeTraits<UINT16> {
   static void AppendDebugStringForValue(const void *val, std::string *str) {
     str->append(SimpleItoa(*reinterpret_cast<const uint16_t *>(val)));
   }
-  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal) {
+  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) {
     AppendDebugStringForValue(val, str);
   }
   static int Compare(const void *lhs, const void *rhs) {
@@ -238,7 +238,7 @@ struct DataTypeTraits<INT16> {
   static void AppendDebugStringForValue(const void *val, std::string *str) {
     str->append(SimpleItoa(*reinterpret_cast<const int16_t *>(val)));
   }
-  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal) {
+  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) {
     AppendDebugStringForValue(val, str);
   }
   static int Compare(const void *lhs, const void *rhs) {
@@ -268,7 +268,7 @@ struct DataTypeTraits<UINT32> {
   static void AppendDebugStringForValue(const void *val, std::string *str) {
     str->append(SimpleItoa(*reinterpret_cast<const uint32_t *>(val)));
   }
-  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal) {
+  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) {
     AppendDebugStringForValue(val, str);
   }
   static int Compare(const void *lhs, const void *rhs) {
@@ -298,7 +298,7 @@ struct DataTypeTraits<INT32> {
   static void AppendDebugStringForValue(const void *val, std::string *str) {
     str->append(SimpleItoa(*reinterpret_cast<const int32_t *>(val)));
   }
-  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal) {
+  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) {
     AppendDebugStringForValue(val, str);
   }
   static int Compare(const void *lhs, const void *rhs) {
@@ -328,7 +328,7 @@ struct DataTypeTraits<UINT64> {
   static void AppendDebugStringForValue(const void *val, std::string *str) {
     str->append(SimpleItoa(*reinterpret_cast<const uint64_t *>(val)));
   }
-  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal) {
+  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) {
     AppendDebugStringForValue(val, str);
   }
   static int Compare(const void *lhs, const void *rhs) {
@@ -358,7 +358,7 @@ struct DataTypeTraits<INT64> {
   static void AppendDebugStringForValue(const void *val, std::string *str) {
     str->append(SimpleItoa(*reinterpret_cast<const int64_t *>(val)));
   }
-  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal) {
+  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) {
     AppendDebugStringForValue(val, str);
   }
   static int Compare(const void *lhs, const void *rhs) {
@@ -388,7 +388,7 @@ struct DataTypeTraits<INT128> {
   static void AppendDebugStringForValue(const void *val, std::string *str) {
     str->append(SimpleItoa(UnalignedLoad<int128_t>(val)));
   }
-  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal) {
+  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) {
     AppendDebugStringForValue(val, str);
   }
   static int Compare(const void *lhs, const void *rhs) {
@@ -418,7 +418,7 @@ struct DataTypeTraits<FLOAT> {
   static void AppendDebugStringForValue(const void *val, std::string *str) {
     str->append(SimpleFtoa(*reinterpret_cast<const float *>(val)));
   }
-  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal) {
+  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) {
     AppendDebugStringForValue(val, str);
   }
   static int Compare(const void *lhs, const void *rhs) {
@@ -448,7 +448,7 @@ struct DataTypeTraits<DOUBLE> {
   static void AppendDebugStringForValue(const void *val, std::string *str) {
     str->append(SimpleDtoa(*reinterpret_cast<const double *>(val)));
   }
-  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal) {
+  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) {
     AppendDebugStringForValue(val, str);
   }
   static int Compare(const void *lhs, const void *rhs) {
@@ -481,7 +481,7 @@ struct DataTypeTraits<BINARY> {
     str->append(strings::CHexEscape(s->ToString()));
     str->push_back('"');
   }
-  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal) { //TODO: move double escaping into string gutil
+  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) { //TODO: move double escaping into string gutil
     const Slice *s = reinterpret_cast<const Slice *>(val);
     std::string src_str = s->ToString();
 
@@ -572,7 +572,7 @@ struct DataTypeTraits<BOOL> {
   static void AppendDebugStringForValue(const void* val, std::string* str) {
     str->append(*reinterpret_cast<const bool *>(val) ? "true" : "false");
   }
-  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal) {
+  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) {
     AppendDebugStringForValue(val, str);
   }
   static int Compare(const void *lhs, const void *rhs) {
@@ -605,8 +605,8 @@ struct DerivedTypeTraits {
     DataTypeTraits<PhysicalType>::AppendDebugStringForValue(val, str);
   }
 
-  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal) {
-    DataTypeTraits<PhysicalType>::AppendCSVStringForValue(val, str, delimiter, quote_minimal);
+  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) {
+    DataTypeTraits<PhysicalType>::AppendCSVStringForValue(val, str, delimiter, quote_minimal, escaping);
   }
 
   static int Compare(const void *lhs, const void *rhs) {
@@ -640,7 +640,7 @@ struct DataTypeTraits<STRING> : public DerivedTypeTraits<BINARY>{
     str->append(strings::Utf8SafeCEscape(s->ToString()));
     str->push_back('"');
   }
-  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal) { //TODO: move double escaping into string gutil
+  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) { //TODO: move double escaping into string gutil
     const Slice *s = reinterpret_cast<const Slice *>(val);
     std::string src_str = s->ToString();
 
@@ -722,7 +722,7 @@ struct DataTypeTraits<UNIXTIME_MICROS> : public DerivedTypeTraits<INT64>{
     snprintf(time, sizeof(time), kDateMicrosAndTzFormat, time_up_to_secs, remaining_micros);
     str->append(time);
   }
-  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal) {
+  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) {
     AppendDebugStringForValue(val, str);
   }
 };
@@ -739,7 +739,7 @@ struct DataTypeTraits<DATE> : public DerivedTypeTraits<INT32>{
 
   static void AppendDebugStringForValue(const void* val, std::string* str);
 
-  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal);
+  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping);
 
   static const cpp_type* min_value() {
     static int32_t value = kMinValue;
@@ -766,7 +766,7 @@ struct DataTypeTraits<DECIMAL32> : public DerivedTypeTraits<INT32>{
     DataTypeTraits<physical_type>::AppendDebugStringForValue(val, str);
     str->append("_D32");
   }
-  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal) {
+  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) {
     AppendDebugStringForValue(val, str);
   }
 };
@@ -783,7 +783,7 @@ struct DataTypeTraits<DECIMAL64> : public DerivedTypeTraits<INT64>{
     DataTypeTraits<physical_type>::AppendDebugStringForValue(val, str);
     str->append("_D64");
   }
-  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal) {
+  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) {
     AppendDebugStringForValue(val, str);
   }
 };
@@ -800,7 +800,7 @@ struct DataTypeTraits<DECIMAL128> : public DerivedTypeTraits<INT128>{
     DataTypeTraits<physical_type>::AppendDebugStringForValue(val, str);
     str->append("_D128");
   }
-  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal) {
+  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) {
     AppendDebugStringForValue(val, str);
   }
 };
@@ -826,7 +826,7 @@ struct DataTypeTraits<VARCHAR> : public DerivedTypeTraits<BINARY>{
     str->append(strings::Utf8SafeCEscape(s->ToString()));
     str->push_back('"');
   }
-  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal) { //TODO: move double escaping into string gutil
+  static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) { //TODO: move double escaping into string gutil
     const Slice *s = reinterpret_cast<const Slice *>(val);
     std::string src_str = s->ToString();
 

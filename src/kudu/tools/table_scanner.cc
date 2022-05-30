@@ -94,6 +94,8 @@ DEFINE_bool(create_table, true,
 DECLARE_string(columns);
 DEFINE_bool(header, true, 
             "Whether to include header with column details.");
+DEFINE_bool(escaping, true, 
+            "Whether to do character escaping.");
 DEFINE_int64(write_buffer_size, 10000, 
             "Reserved string buffer size when writing to a file.");
 DEFINE_int64(scan_batch_size, -1, 
@@ -555,7 +557,7 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
       // Write header to file
       if (FLAGS_header && !header_included){
         const KuduSchema* schema = batch.projection_schema();
-        csv_file << schema->ToCSVString(); //TODO: add delimiter passing
+        csv_file << schema->ToCSVString(); //TODO: add delimiter passing, escaping, data type
         header_included =true;
       }
 
@@ -564,7 +566,7 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
       for (const auto& row : batch)
       {
         std::string row_str; 
-        row.ToCSVString(&row_str, ','); //TODO: change delimiter passing
+        row.ToCSVString(&row_str, ',', FLAGS_escaping); //TODO: change delimiter passing
         if (buffer.length() + row_str.length() + 1 >= THRESHOLD)
         {
           if (buffer.length() == 0){

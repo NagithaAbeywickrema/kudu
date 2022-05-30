@@ -58,11 +58,11 @@ void TypeInfo::AppendDebugStringForValue(const void *ptr, string *str) const {
   }
 }
 
-void TypeInfo::AppendCSVStringForValue(const void *ptr, std::string *str, char delimiter, bool quote_minimal) const {
+void TypeInfo::AppendCSVStringForValue(const void *ptr, std::string *str, char delimiter, bool quote_minimal, bool escaping) const {
   if (KUDU_SHOULD_REDACT()) {
     str->append(kRedactionMessage);
   } else {
-    append_csv_func_(ptr, str, ',', quote_minimal);
+    append_csv_func_(ptr, str, ',', quote_minimal, escaping);
   }
 }
 
@@ -138,7 +138,7 @@ void DataTypeTraits<DATE>::AppendDebugStringForValue(const void* val, string* st
   }
 }
 
-void DataTypeTraits<DATE>::AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal) {
+void DataTypeTraits<DATE>::AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) {
   DataTypeTraits<DATE>::AppendDebugStringForValue(val, str);
 }
 

@@ -345,7 +345,7 @@ class KUDU_EXPORT KuduScanBatch::RowPtr {
   std::string ToString() const;
 
   /// @return String representation for this row in CSV format.
-  void ToCSVString(std::string* ret, char delimiter) const;
+  void ToCSVString(std::string* ret, char delimiter, bool escaping) const;
 
  private:
   friend class KuduScanBatch;

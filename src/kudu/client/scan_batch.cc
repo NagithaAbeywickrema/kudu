@@ -399,7 +399,7 @@ string KuduScanBatch::RowPtr::ToString() const {
   return ret;
 }
 
-void KuduScanBatch::RowPtr::ToCSVString(std::string* ret, char delimiter) const { //TODO: add comment, change delimiter passing
+void KuduScanBatch::RowPtr::ToCSVString(std::string* ret, char delimiter, bool escaping) const { //TODO: add comment, change delimiter passing, delimiter passing using optional arguments
     // Client-users calling ToCSVString() will likely expect it to not be redacted.
     ScopedDisableRedaction no_redaction;
     
@@ -409,7 +409,7 @@ void KuduScanBatch::RowPtr::ToCSVString(std::string* ret, char delimiter) const 
           ret->push_back(delimiter);
         }
         RowCell cell(this, i);
-        schema_->column(i).DebugCSVCellAppend(cell, ret);
+        schema_->column(i).DebugCSVCellAppend(cell, ret, escaping);
         first = false;
     }
 }
