@@ -95,7 +95,7 @@ class TypeInfo {
   typedef void (*AppendDebugFunc)(const void *, std::string *);
   const AppendDebugFunc append_func_;
 
-  typedef void (*AppendCSVFunc)(const void *, std::string *, char, bool);
+  typedef void (*AppendCSVFunc)(const void *, std::string *, char, bool, bool);
   const AppendCSVFunc append_csv_func_;
 
   typedef int (*CompareFunc)(const void *, const void *);
