@@ -64,7 +64,7 @@ class TypeInfo {
   const std::string& name() const { return name_; }
   const size_t size() const { return size_; }
   void AppendDebugStringForValue(const void *ptr, std::string *str) const;
-  void AppendCSVStringForValue(const void *ptr, std::string *str, char delimiter, bool quote_minimal = false, , bool escaping = true) const;
+  void AppendCSVStringForValue(const void *ptr, std::string *str, char delimiter, bool quote_minimal = false, bool escaping = true) const;
   int Compare(const void *lhs, const void *rhs) const;
   // Returns true if increment(a) is equal to b.
   bool AreConsecutive(const void* a, const void* b) const;
