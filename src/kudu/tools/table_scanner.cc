@@ -545,8 +545,9 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
   env_util::CreateDirsRecursively(env, dir_); //TODO: error handling on failure
   std::fstream csv_file(file_path, std::fstream::app); //TODO: error handling on failure
 
-  // Reserve file write string buffer
+  // Reserve file write string buffers
   const int THRESHOLD = FLAGS_write_buffer_size;
+  std::string row_str;
   std::string buffer;
   buffer.reserve(THRESHOLD);
 
@@ -565,7 +566,7 @@ void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thr
       buffer.resize(0);
       for (const auto& row : batch)
       {
-        std::string row_str; 
+        row_str.resize(0);
         row.ToCSVString(&row_str, ',', FLAGS_escaping); //TODO: change delimiter passing
         if (buffer.length() + row_str.length() + 1 >= THRESHOLD)
         {
