@@ -202,6 +202,12 @@ int Utf8SafeCEscapeString(const char* src, int src_len, char* dest,
                           int dest_len);
 int Utf8SafeCHexEscapeString(const char* src, int src_len, char* dest,
                              int dest_len);
+int CSVCEscapeString(const char* src, int src_len, char* dest, int dest_len);
+int CSVCHexEscapeString(const char* src, int src_len, char* dest, int dest_len);
+int CSVUtf8SafeCEscapeString(const char* src, int src_len, char* dest,
+                          int dest_len);
+int CSVUtf8SafeCHexEscapeString(const char* src, int src_len, char* dest,
+                             int dest_len);
 
 // ----------------------------------------------------------------------
 // CEscape()
