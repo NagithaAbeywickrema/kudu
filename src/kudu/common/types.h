@@ -488,7 +488,7 @@ struct DataTypeTraits<BINARY> {
       str->push_back('"');
       str->append(s->ToString());
       str->push_back('"');
-      return
+      return;
     }
 
     // Quadruple the original size, for C style escaping, plus one byte for
@@ -617,7 +617,7 @@ struct DataTypeTraits<STRING> : public DerivedTypeTraits<BINARY>{
       str->push_back('"');
       str->append(s->ToString());
       str->push_back('"');
-      return
+      return;
     }
 
     // Quadruple the original size, for C style escaping, plus one byte for
@@ -773,7 +773,7 @@ struct DataTypeTraits<VARCHAR> : public DerivedTypeTraits<BINARY>{
       str->push_back('"');
       str->append(s->ToString());
       str->push_back('"');
-      return
+      return;
     }
 
     // Quadruple the original size, for C style escaping, plus one byte for
