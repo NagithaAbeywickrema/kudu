@@ -426,7 +426,7 @@ class ColumnSchema {
     if (is_nullable_ && cell.is_null()) {
       // Do nothing because NULL is represented as a blank in CSV
     } else {
-      type_info_->AppendCSVStringForValue(cell.ptr(), ret, ',', escaping); //TODO: change delimiter passing
+      type_info_->AppendCSVStringForValue(cell.ptr(), ret, ',', false, escaping); //TODO: change delimiter passing
     }
   }
 

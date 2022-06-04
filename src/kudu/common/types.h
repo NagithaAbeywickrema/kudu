@@ -64,7 +64,7 @@ class TypeInfo {
   const std::string& name() const { return name_; }
   const size_t size() const { return size_; }
   void AppendDebugStringForValue(const void *ptr, std::string *str) const;
-  void AppendCSVStringForValue(const void *ptr, std::string *str, char delimiter, bool quote_minimal = false, , bool escaping = true) const;
+  void AppendCSVStringForValue(const void *ptr, std::string *str, char delimiter, bool quote_minimal = false, bool escaping = true) const;
   int Compare(const void *lhs, const void *rhs) const;
   // Returns true if increment(a) is equal to b.
   bool AreConsecutive(const void* a, const void* b) const;
@@ -95,7 +95,7 @@ class TypeInfo {
   typedef void (*AppendDebugFunc)(const void *, std::string *);
   const AppendDebugFunc append_func_;
 
-  typedef void (*AppendCSVFunc)(const void *, std::string *, char, bool);
+  typedef void (*AppendCSVFunc)(const void *, std::string *, char, bool, bool);
   const AppendCSVFunc append_csv_func_;
 
   typedef int (*CompareFunc)(const void *, const void *);
@@ -483,65 +483,24 @@ struct DataTypeTraits<BINARY> {
   }
   static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) { //TODO: move double escaping into string gutil
     const Slice *s = reinterpret_cast<const Slice *>(val);
-    std::string src_str = s->ToString();
-
+    
     if (!escaping){
-      if(!quote_minimal){
-        str->push_back('"');
-      }
+      str->push_back('"');
       str->append(s->ToString());
-      if(!quote_minimal){
-        str->push_back('"');
-      }
-      return
+      str->push_back('"');
+      return;
     }
 
     // Quadruple the original size, for C style escaping, plus one byte for
     // the closing \0.
+    std::string src_str = s->ToString();
     const int dest_length = src_str.size() * 4 + 1;
     std::unique_ptr<char[]> dest(new char[dest_length]);
-    const int hex_escaped_size = strings::CHexEscapeString(src_str.data(), src_str.size(),
+    const int escaped_size = strings::CSVCHexEscapeString(src_str.data(), src_str.size(),
                                     dest.get(), dest_length);
-    CHECK_GE(hex_escaped_size, 0) << "Buffer somehow wasn't large enough.";
-    CHECK_GE(dest_length, hex_escaped_size + 1)
-      << "Buffer should have one space at the end for a "
-      << "closing '\\0'";
-    std::string src_str_escaped = std::string(dest.get(), hex_escaped_size);
-
-    const std::string delimiter_str(1, delimiter);
-    const std::string escape_chars = delimiter_str + "\\";
-    if ((src_str_escaped.find_first_of(escape_chars) != std::string::npos) ||
-        (!src_str_escaped.empty() && (ascii_isspace(*src_str_escaped.begin()) ||
-                              ascii_isspace(*src_str_escaped.rbegin())))) {
-      // Double the original size, for CSV escaping, plus two bytes for
-      // the bracketing double-quotes, and one byte for the closing \0.
-      int next_dest_length = 2 * src_str_escaped.size() + 3;
-      std::unique_ptr<char[]> buf(new char[next_dest_length]);
-
-      // Leave space at beginning and end for bracketing double-quotes.
-      const char * src = src_str_escaped.c_str();
-      int csv_escaped_size = strings::EscapeStrForCSV(src,
-                                                  buf.get() + 1, next_dest_length - 2);
-      CHECK_GE(csv_escaped_size, 0) << "Buffer somehow wasn't large enough.";
-      CHECK_GE(next_dest_length, csv_escaped_size + 3)
-        << "Buffer should have one space at the beginning for a "
-        << "double-quote, one at the end for a double-quote, and "
-        << "one at the end for a closing '\\0'";
-      *buf.get() = '"';
-      *((buf.get() + 1) + csv_escaped_size) = '"';
-      *((buf.get() + 1) + csv_escaped_size + 1) = '\0';
-      
-      std::string out_str = std::string(buf.get(), csv_escaped_size + 2);
-      str->append(out_str);
-    } else {
-      if(!quote_minimal){
-        str->push_back('"');
-      }
-      str->append(s->ToString());
-      if(!quote_minimal){
-        str->push_back('"');
-      }
-    }
+    str->push_back('"');
+    str->append(std::string(dest.get(), escaped_size));
+    str->push_back('"');
   }
   static int Compare(const void *lhs, const void *rhs) {
     const Slice *lhs_slice = reinterpret_cast<const Slice *>(lhs);
@@ -653,65 +612,24 @@ struct DataTypeTraits<STRING> : public DerivedTypeTraits<BINARY>{
   }
   static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) { //TODO: move double escaping into string gutil
     const Slice *s = reinterpret_cast<const Slice *>(val);
-    std::string src_str = s->ToString();
-
+    
     if (!escaping){
-      if(!quote_minimal){
-        str->push_back('"');
-      }
+      str->push_back('"');
       str->append(s->ToString());
-      if(!quote_minimal){
-        str->push_back('"');
-      }
-      return
+      str->push_back('"');
+      return;
     }
 
     // Quadruple the original size, for C style escaping, plus one byte for
     // the closing \0.
+    std::string src_str = s->ToString();
     const int dest_length = src_str.size() * 4 + 1;
     std::unique_ptr<char[]> dest(new char[dest_length]);
-    const int hex_escaped_size = strings::Utf8SafeCEscapeString(src_str.data(), src_str.size(),
+    const int escaped_size = strings::CSVUtf8SafeCEscapeString(src_str.data(), src_str.size(),
                                     dest.get(), dest_length);
-    CHECK_GE(hex_escaped_size, 0) << "Buffer somehow wasn't large enough.";
-    CHECK_GE(dest_length, hex_escaped_size + 1)
-      << "Buffer should have one space at the end for a "
-      << "closing '\\0'";
-    std::string src_str_escaped = std::string(dest.get(), hex_escaped_size);
-
-    const std::string delimiter_str(1, delimiter);
-    const std::string escape_chars = delimiter_str + "\\";
-    if ((src_str_escaped.find_first_of(escape_chars) != std::string::npos) ||
-        (!src_str_escaped.empty() && (ascii_isspace(*src_str_escaped.begin()) ||
-                              ascii_isspace(*src_str_escaped.rbegin())))) {
-      // Double the original size, for CSV escaping, plus two bytes for
-      // the bracketing double-quotes, and one byte for the closing \0.
-      int next_dest_length = 2 * src_str_escaped.size() + 3;
-      std::unique_ptr<char[]> buf(new char[next_dest_length]);
-
-      // Leave space at beginning and end for bracketing double-quotes.
-      const char * src = src_str_escaped.c_str();
-      int csv_escaped_size = strings::EscapeStrForCSV(src,
-                                                  buf.get() + 1, next_dest_length - 2);
-      CHECK_GE(csv_escaped_size, 0) << "Buffer somehow wasn't large enough.";
-      CHECK_GE(next_dest_length, csv_escaped_size + 3)
-        << "Buffer should have one space at the beginning for a "
-        << "double-quote, one at the end for a double-quote, and "
-        << "one at the end for a closing '\\0'";
-      *buf.get() = '"';
-      *((buf.get() + 1) + csv_escaped_size) = '"';
-      *((buf.get() + 1) + csv_escaped_size + 1) = '\0';
-      
-      std::string out_str = std::string(buf.get(), csv_escaped_size + 2);
-      str->append(out_str);
-    } else {
-      if(!quote_minimal){
-        str->push_back('"');
-      }
-      str->append(s->ToString());
-      if(!quote_minimal){
-        str->push_back('"');
-      }
-    }
+    str->push_back('"');
+    str->append(std::string(dest.get(), escaped_size));
+    str->push_back('"');
   }
 };
 
@@ -850,65 +768,24 @@ struct DataTypeTraits<VARCHAR> : public DerivedTypeTraits<BINARY>{
   }
   static void AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) { //TODO: move double escaping into string gutil
     const Slice *s = reinterpret_cast<const Slice *>(val);
-    std::string src_str = s->ToString();
-
+    
     if (!escaping){
-      if(!quote_minimal){
-        str->push_back('"');
-      }
+      str->push_back('"');
       str->append(s->ToString());
-      if(!quote_minimal){
-        str->push_back('"');
-      }
-      return
+      str->push_back('"');
+      return;
     }
 
     // Quadruple the original size, for C style escaping, plus one byte for
     // the closing \0.
+    std::string src_str = s->ToString();
     const int dest_length = src_str.size() * 4 + 1;
     std::unique_ptr<char[]> dest(new char[dest_length]);
-    const int hex_escaped_size = strings::Utf8SafeCEscapeString(src_str.data(), src_str.size(),
+    const int escaped_size = strings::CSVUtf8SafeCEscapeString(src_str.data(), src_str.size(),
                                     dest.get(), dest_length);
-    CHECK_GE(hex_escaped_size, 0) << "Buffer somehow wasn't large enough.";
-    CHECK_GE(dest_length, hex_escaped_size + 1)
-      << "Buffer should have one space at the end for a "
-      << "closing '\\0'";
-    std::string src_str_escaped = std::string(dest.get(), hex_escaped_size);
-
-    const std::string delimiter_str(1, delimiter);
-    const std::string escape_chars = delimiter_str + "\\";
-    if ((src_str_escaped.find_first_of(escape_chars) != std::string::npos) ||
-        (!src_str_escaped.empty() && (ascii_isspace(*src_str_escaped.begin()) ||
-                              ascii_isspace(*src_str_escaped.rbegin())))) {
-      // Double the original size, for CSV escaping, plus two bytes for
-      // the bracketing double-quotes, and one byte for the closing \0.
-      int next_dest_length = 2 * src_str_escaped.size() + 3;
-      std::unique_ptr<char[]> buf(new char[next_dest_length]);
-
-      // Leave space at beginning and end for bracketing double-quotes.
-      const char * src = src_str_escaped.c_str();
-      int csv_escaped_size = strings::EscapeStrForCSV(src,
-                                                  buf.get() + 1, next_dest_length - 2);
-      CHECK_GE(csv_escaped_size, 0) << "Buffer somehow wasn't large enough.";
-      CHECK_GE(next_dest_length, csv_escaped_size + 3)
-        << "Buffer should have one space at the beginning for a "
-        << "double-quote, one at the end for a double-quote, and "
-        << "one at the end for a closing '\\0'";
-      *buf.get() = '"';
-      *((buf.get() + 1) + csv_escaped_size) = '"';
-      *((buf.get() + 1) + csv_escaped_size + 1) = '\0';
-      
-      std::string out_str = std::string(buf.get(), csv_escaped_size + 2);
-      str->append(out_str);
-    } else {
-      if(!quote_minimal){
-        str->push_back('"');
-      }
-      str->append(s->ToString());
-      if(!quote_minimal){
-        str->push_back('"');
-      }
-    }
+    str->push_back('"');
+    str->append(std::string(dest.get(), escaped_size));
+    str->push_back('"');
   }
 };
 
