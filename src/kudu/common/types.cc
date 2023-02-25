@@ -45,6 +45,7 @@ TypeInfo::TypeInfo(TypeTraitsClass /*t*/)
     max_value_(TypeTraitsClass::max_value()),
     is_virtual_(TypeTraitsClass::IsVirtual()),
     append_func_(TypeTraitsClass::AppendDebugStringForValue),
+    append_csv_func_(TypeTraitsClass::AppendCSVStringForValue),
     compare_func_(TypeTraitsClass::Compare),
     are_consecutive_func_(TypeTraitsClass::AreConsecutive) {
 }
@@ -54,6 +55,14 @@ void TypeInfo::AppendDebugStringForValue(const void *ptr, string *str) const {
     str->append(kRedactionMessage);
   } else {
     append_func_(ptr, str);
+  }
+}
+
+void TypeInfo::AppendCSVStringForValue(const void *ptr, std::string *str, char delimiter, bool quote_minimal, bool escaping) const {
+  if (KUDU_SHOULD_REDACT()) {
+    str->append(kRedactionMessage);
+  } else {
+    append_csv_func_(ptr, str, ',', quote_minimal, escaping);
   }
 }
 
@@ -127,6 +136,10 @@ void DataTypeTraits<DATE>::AppendDebugStringForValue(const void* val, string* st
   } else {
     str->append(Substitute("value $0 out of range for DATE type", days_since_unix_epoch));
   }
+}
+
+void DataTypeTraits<DATE>::AppendCSVStringForValue(const void *val, std::string *str, char delimiter, bool quote_minimal, bool escaping) {
+  DataTypeTraits<DATE>::AppendDebugStringForValue(val, str);
 }
 
 } // namespace kudu

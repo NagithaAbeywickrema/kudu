@@ -26,6 +26,9 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <thread>
+#include <fstream>
+#include <chrono>
 
 #include <boost/optional/optional.hpp>
 #include <gflags/gflags.h>
@@ -46,6 +49,7 @@
 #include "kudu/gutil/map-util.h"
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/stl_util.h"
+#include "kudu/gutil/strings/join.h"
 #include "kudu/gutil/strings/split.h"
 #include "kudu/gutil/strings/substitute.h"
 #include "kudu/util/bitmap.h"
@@ -56,6 +60,9 @@
 #include "kudu/util/slice.h"
 #include "kudu/util/stopwatch.h"
 #include "kudu/util/string_case.h"
+#include "kudu/util/env.h"
+#include "kudu/util/env_util.h"
+#include "kudu/util/path_util.h"
 
 using kudu::client::KuduClient;
 using kudu::client::KuduColumnSchema;
@@ -85,6 +92,24 @@ using strings::Substitute;
 DEFINE_bool(create_table, true,
             "Whether to create the destination table if it doesn't exist.");
 DECLARE_string(columns);
+DEFINE_bool(header, true, 
+            "Whether to include header with column details.");
+DEFINE_bool(escaping, true, //TODO: change name from escaping to escape
+            "Whether to do character escaping.");
+DEFINE_int64(write_buffer_size, 10000, 
+            "Reserved string buffer size when writing to a file.");
+DEFINE_int64(scan_batch_size, -1, 
+            "The size for scan results batches, in bytes."
+            "A negative value means the server-side default is used," 
+            "where the server-side default is controlled by the tablet" 
+            "server’s --scanner_default_batch_size_bytes flag."
+            "the server-side max value is controlled by the tablet"
+            "server’s --scanner_max_batch_size_bytes flag.");
+DEFINE_int64(keep_alive_ms, -1, 
+            "Time interval in milliseconds to reset tablet scanner timeout in tserver."
+            "Half the value of scanner_ttl_ms flag in tserver configuration is recommended."
+            "Will only try to keep scanner alive if keep_alive_ms > 0 and Recommended"
+            "if I/O throughput is low.");
 DEFINE_bool(fill_cache, true,
             "Whether to fill block cache when scanning.");
 DECLARE_int32(num_threads);
@@ -463,7 +488,7 @@ Status TableScanner::AddRow(const client::sp::shared_ptr<KuduTable>& table,
 }
 
 Status TableScanner::ScanData(const std::vector<kudu::client::KuduScanToken*>& tokens,
-                              const std::function<void(const KuduScanBatch& batch)>& cb) {
+                              const std::function<void(const KuduScanBatch& batch, std::unique_ptr<kudu::client::KuduScanner>& scanner)>& cb) {
 
   for (auto token : tokens) {
     Stopwatch sw(Stopwatch::THIS_THREAD);
@@ -481,7 +506,7 @@ Status TableScanner::ScanData(const std::vector<kudu::client::KuduScanToken*>& t
       RETURN_NOT_OK(scanner->NextBatch(&batch));
       count += batch.NumRows();
       total_count_.IncrementBy(batch.NumRows());
-      cb(batch);
+      cb(batch, scanner);
     }
 
     sw.stop();
@@ -497,7 +522,7 @@ Status TableScanner::ScanData(const std::vector<kudu::client::KuduScanToken*>& t
 }
 
 void TableScanner::ScanTask(const vector<KuduScanToken *>& tokens, Status* thread_status) {
-  *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch) {
+  *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch, std::unique_ptr<kudu::client::KuduScanner>& scanner) {
     if (out_ && FLAGS_show_values) {
       MutexLock l(output_lock_);
       for (const auto& row : batch) {
@@ -506,6 +531,69 @@ void TableScanner::ScanTask(const vector<KuduScanToken *>& tokens, Status* threa
       out_->flush();
     }
   });
+}
+
+void TableScanner::ExportTask(const vector<KuduScanToken *>& tokens, Status* thread_status) {
+  // Create file directory, then output CSV file
+  auto t_id = std::this_thread::get_id();
+  std::stringstream ss;
+  ss << t_id;
+  std::string thread_id = ss.str();            
+  std::string file_name = std::string("csv_") + thread_id + std::string(".csv");
+  string file_path = JoinPathSegments(dir_, file_name); //TODO: dir_ validation
+  Env* env = Env::Default();
+  env_util::CreateDirsRecursively(env, dir_); //TODO: error handling on failure
+  std::fstream csv_file(file_path, std::fstream::app); //TODO: error handling on failure
+
+  // Reserve file write string buffers
+  const int THRESHOLD = FLAGS_write_buffer_size;
+  std::string row_str;
+  std::string buffer;
+  buffer.reserve(THRESHOLD);
+
+  bool header_included = false; 
+  auto call_keep_alive_at = std::chrono::steady_clock::now();
+  *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch, std::unique_ptr<kudu::client::KuduScanner>& scanner) {
+    if (out_ && FLAGS_show_values) {  
+      // Write header to file
+      if (FLAGS_header && !header_included){
+        const KuduSchema* schema = batch.projection_schema();
+        csv_file << schema->ToCSVString(); //TODO: add delimiter passing, escaping, data type
+        header_included =true;
+      }
+
+      // Write row data to file
+      buffer.resize(0);
+      for (const auto& row : batch)
+      {
+        row_str.resize(0);
+        row.ToCSVString(&row_str, ',', FLAGS_escaping); //TODO: change delimiter passing
+        if (buffer.length() + row_str.length() + 1 >= THRESHOLD)
+        {
+          if (buffer.length() == 0){
+            //TODO:LOG(WARNING). NOTE: buffer size not enough
+          } else {
+            if (FLAGS_keep_alive_ms > 0 && std::chrono::steady_clock::now() > call_keep_alive_at){
+              scanner->KeepAlive();
+              call_keep_alive_at = std::chrono::steady_clock::now() + std::chrono::milliseconds(FLAGS_keep_alive_ms);
+            }
+            csv_file << buffer;
+            buffer.resize(0);
+          }
+        }
+        buffer.append(row_str);
+        buffer.append(1, '\n'); //TODO: clarify line ending for seperate OS. NOTE: POSIX utils may help
+      }
+      if (FLAGS_keep_alive_ms > 0 && std::chrono::steady_clock::now() > call_keep_alive_at){
+        scanner->KeepAlive();
+        call_keep_alive_at = std::chrono::steady_clock::now() + std::chrono::milliseconds(FLAGS_keep_alive_ms);
+      }
+      csv_file << buffer;
+      csv_file.flush();
+      out_->flush();
+    }
+  });
+  csv_file.close();
 }
 
 void TableScanner::CopyTask(const vector<KuduScanToken*>& tokens, Status* thread_status) {
@@ -519,7 +607,7 @@ void TableScanner::CopyTask(const vector<KuduScanToken*>& tokens, Status* thread
   CHECK_OK(session->SetErrorBufferSpace(1024));
   session->SetTimeoutMillis(30000);
 
-  *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch) {
+  *thread_status = ScanData(tokens, [&](const KuduScanBatch& batch, std::unique_ptr<kudu::client::KuduScanner>& scanner) {
     for (const auto& row : batch) {
       CHECK_OK(AddRow(dst_table, dst_table_schema, row, session));
     }
@@ -558,9 +646,12 @@ Status TableScanner::StartWork(WorkType type) {
     RETURN_NOT_OK(builder.SetReadMode(mode_.get()));
   }
   RETURN_NOT_OK(builder.SetTimeoutMillis(30000));
+  if (FLAGS_scan_batch_size > 0){
+    RETURN_NOT_OK(builder.SetBatchSizeBytes(FLAGS_scan_batch_size));
+  }
 
   // Set projection if needed.
-  if (type == WorkType::kScan) {
+  if (type == WorkType::kScan || type == WorkType::kExport) {
     bool project_all = FLAGS_columns == "*" ||
                        (FLAGS_show_values && FLAGS_columns.empty());
     if (!project_all) {
@@ -603,6 +694,9 @@ Status TableScanner::StartWork(WorkType type) {
     if (type == WorkType::kScan) {
       RETURN_NOT_OK(thread_pool_->Submit([this, t_tokens, t_status]()
                                          { this->ScanTask(*t_tokens, t_status); }));
+    } else if (type == WorkType::kExport) {
+      RETURN_NOT_OK(thread_pool_->Submit([this, t_tokens, t_status]()
+                                         { this->ExportTask(*t_tokens, t_status); }));
     } else {
       CHECK(type == WorkType::kCopy);
       RETURN_NOT_OK(thread_pool_->Submit([this, t_tokens, t_status]()
@@ -632,6 +726,10 @@ Status TableScanner::StartWork(WorkType type) {
 
 Status TableScanner::StartScan() {
   return StartWork(WorkType::kScan);
+}
+
+Status TableScanner::StartExport() {
+  return StartWork(WorkType::kExport);
 }
 
 Status TableScanner::StartCopy() {

@@ -31,6 +31,7 @@
 #include "kudu/util/bitmap.h"
 #include "kudu/util/int128.h"
 #include "kudu/util/logging.h"
+#include "kudu/gutil/strings/join.h"
 
 using std::string;
 using strings::Substitute;
@@ -396,6 +397,21 @@ string KuduScanBatch::RowPtr::ToString() const {
   }
   ret.append(")");
   return ret;
+}
+
+void KuduScanBatch::RowPtr::ToCSVString(std::string* ret, char delimiter, bool escaping) const { //TODO: add comment, change delimiter passing, delimiter passing using optional arguments
+    // Client-users calling ToCSVString() will likely expect it to not be redacted.
+    ScopedDisableRedaction no_redaction;
+    
+    bool first = true;
+    for (int i = 0; i < schema_->num_columns(); i++) {
+        if (!first) {
+          ret->push_back(delimiter);
+        }
+        RowCell cell(this, i);
+        schema_->column(i).DebugCSVCellAppend(cell, ret, escaping);
+        first = false;
+    }
 }
 
 } // namespace client
